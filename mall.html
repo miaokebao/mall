@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover"
+    />
+    <title>Mall</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/vant@4.9.6/lib/index.css"
+    />
+    <style>
+      :root:root {
+        --van-card-price-color: var(--van-submit-bar-price-color);
+        --van-card-background: #fff;
+      }
+      body {
+        font-size: 12px;
+        background-color: var(--van-gray-2);
+      }
+      .product-swipe img {
+        width: 100%;
+        display: block;
+      }
+      .product-cell-group {
+        margin: 15px 0;
+      }
+      .divider {
+        border-color: #000;
+        width: 200px;
+        margin: 0 auto;
+      }
+      .category-grid-item .van-grid-item__content {
+        background-color: transparent;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- 商品分类页 START -->
+    <template id="categoryListPage">
+      <van-search
+        placeholder="请输入搜索内容"
+        @focus="toSearch"
+      ></van-search>
+      <div style="padding-top: 20px; padding-bottom: 50px;">
+        <van-pull-refresh
+          v-model="refreshing"
+          @refresh="onRefresh"
+        >
+          <van-space
+            direction="vertical"
+            :size="20"
+          >
+            <div
+              v-for="(categoryGroup, index) in categoryGroupList"
+              :key="index"
+            >
+              <van-divider class="divider">{{ categoryGroup.name }}</van-divider>
+              <van-grid :border="false" clickable>
+                <van-grid-item
+                  v-for="category in categoryGroup.childrens"
+                  :to="`/products?categoryId=${category.id}`"
+                  class="category-grid-item"
+                >
+                  <van-image
+                    round
+                    lazy-load
+                    :src="category.thumb"
+                    :width="80"
+                    :height="80"
+                  ></van-image>
+                  <span>{{ category.name }}</span>
+                </van-grid-item>
+              </van-grid>
+            </div>
+          </van-space>
+        </van-pull-refresh>
+      </div>
+      <van-back-top bottom="80"></van-back-top>
+    </template>
+    <!-- 商品分类页 END -->
+
+
+
+    <!-- 搜索页 START -->
+    <template id="searchPage">
+      <van-search
+        v-model="searchKeyword"
+        placeholder="请输入搜索内容"
+        ref="search"
+        @search="onSearch"
+      ></van-search>
+      <div v-if="historyKeywords.length > 0" style="padding: 10px;">
+        <van-row style="margin-bottom: 10px;">
+          <van-col span="12">
+            <span style="font-size: var(--van-font-size-lg);">搜索历史</span>
+          </van-col>
+          <van-col
+            span="12"
+            style="text-align: right;"
+          >
+            <div v-if="removing">
+              <span
+                style="color: var(--van-red);"
+                @click="removeAllHistoryKeyword"
+              >
+                清空
+              </span>
+              <van-divider vertical></van-divider>
+              <span @click="removing = false">完成</span>
+            </div>
+            <van-icon
+              v-else
+              name="delete-o"
+              @click="removing = true"
+            ></van-icon>
+          </van-col>
+        </van-row>
+        <van-space>
+          <van-tag
+            v-for="historyKeyword in historyKeywords"
+            :key="historyKeyword"
+            :closeable="removing"
+            size="large"
+            style="background-color: var(--van-gray-2); color: #666;"
+            @close="removeHistoryKeyword(historyKeyword)"
+          >
+            {{ historyKeyword }}
+          </van-tag>
+        </van-space>
+      </div>
+    </template>
+    <!-- 搜索页 END -->
+
+
+
+    <!-- 商品列表页 START -->
+    <template id="productListPage">
+      <van-search
+        v-model="keyword"
+        placeholder="请输入搜索内容"
+        :show-action="!!keyword"
+        @focus="toSearch"
+        @cancel="onCancel"
+      ></van-search>
+      <van-empty
+        v-if="!loading && finished && productList.length == 0"
+        image="search"
+        description="暂无商品"
+      >
+      </van-empty>
+      <van-pull-refresh
+        v-else
+        v-model="refreshing"
+        @refresh="onRefresh"
+      >
+        <van-list
+          v-model:loading="loading"
+          :finished="finished"
+          :immediate-check="false"
+          finished-text="没有更多了"
+          @load="onLoad"
+        >
+          <van-card
+            style="margin: 10px; border-radius: 10px;"
+            v-for="(product, index) in productList"
+            :key="index"
+            :title="product.title"
+            :desc="product.sub_title"
+            :price="Number(product.price * 0.3).toFixed(2)"
+            :origin-price="Number(product.price).toFixed(2)"
+            :thumb="product.thumb"
+            @click="$router.push(`/products/${product.id}`)"
+          >
+            <template #bottom>
+              <div style="color: var(--van-card-desc-color);">已售 {{ product.sales_count }}</div>
+            </template>
+          </van-card>
+        </van-list>
+      </van-pull-refresh>
+      <van-back-top bottom="80"></van-back-top>
+    </template>
+    <!-- 商品列表页 END -->
+
+
+
+    <!-- 商品详情页 START -->
+    <template id="productDetailPage">
+      <div style="padding-bottom: 65px;">
+        <van-space
+          direction="vertical"
+          style="width: 100%;"
+          :size="15"
+        >
+          <van-swipe
+            class="product-swipe"
+            :autoplay="3000"
+          >
+            <van-swipe-item
+              v-for="(thumb, index) in product.thumbs"
+              :key="index"
+              @click="previewImage(index)"
+            >
+              <img :src="thumb" />
+            </van-swipe-item>
+          </van-swipe>
+          <van-cell-group inset>
+            <van-cell>
+              <template #title>
+                <div>
+                  <span style="color: var(--van-card-price-color);">
+                    ¥ <span style="font-size: 22px;">{{ Number(showPrice * 0.3).toFixed(2) }}</span>
+                  </span>
+                  <span class="van-card__origin-price">{{ Number(showPrice).toFixed(2) }}</span>
+                </div>
+                <div style="font-size: 18px; margin-top: 10px;">
+                  {{ product.title }}
+                </div>
+                <div
+                  v-if="!!product.sub_title"
+                  style="color: var(--van-card-desc-color); margin-top: 10px;"
+                >
+                  {{ product.sub_title }}
+                </div>
+              </template>
+            </van-cell>
+            <van-cell>
+              <template #title>
+                <van-row>
+                  <van-col span="12">
+                    销量：{{ product.sales_count }}
+                  </van-col>
+                  <van-col span="12" style="text-align: right;">
+                    库存：{{ showStock }}
+                  </van-col>
+                </van-row>
+              </template>
+            </van-cell>
+          </van-cell-group>
+          <van-cell-group inset>
+            <van-cell
+              :value="`共${optionCount}种规格可选`"
+              is-link
+              clickable
+              @click="showSpecPicker = true"
+            >
+              <template #title>
+                <template v-if="selectedOption">
+                  已选择 {{ selectedOption.title }} × {{ amount }}
+                </template>
+                <template v-else>
+                  请选择
+                </template>
+              </template>
+            </van-cell>
+          </van-cell-group>
+        </van-space>
+        <van-action-bar>
+          <van-action-bar-icon
+            icon="cart-o"
+            text="购物车"
+            replace
+            to="/cart"
+            :badge="$store.getters.totalAmount > 0 ? $store.getters.totalAmount : ''"
+          ></van-action-bar-icon>
+          <van-action-bar-button
+            type="danger"
+            @click="showSpecPicker = true"
+          >
+            加入购物车
+          </van-action-bar-button>
+        </van-action-bar>
+        <product-spec-picker
+          v-model:show="showSpecPicker"
+          :product="product"
+          :default-item-ids="selectedItemIds"
+          :default-amount="amount"
+          @select="selectProductSpec"
+        ></product-spec-picker>
+      </div>
+    </div>
+    </template>
+    <!-- 商品详情页 END -->
+
+
+
+    <!-- 购物车页 START -->
+    <template id="cartListPage">
+      <van-empty v-if="cartList.length == 0">
+        <template #description>
+          <div style="text-align: center;">
+            购物车为空
+            <br />
+            赶紧去逛逛，挑选心仪的商品吧
+          </div>
+        </template>
+        <van-button
+          plain
+          type="danger"
+          @click="$router.replace('/')"
+        >
+          去逛逛
+        </van-button>
+      </van-empty>
+      <div
+        v-else
+        style="padding-bottom: 100px;"
+      >
+        <template
+          v-for="(cartRecord, index) in cartList"
+          :key="index"
+        >
+          <van-swipe-cell style="margin: 10px; border-radius: 10px;">
+            <van-card
+              :title="cartRecord.product.title"
+              :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
+              :origin-price="Number(cartRecord.option.price).toFixed(2)"
+              :thumb="cartRecord.product.thumb"
+              @click-thumb="$router.push(`/products/${cartRecord.product.id}`)"
+              lazy-load
+            >
+              <template #tags>
+                <div>
+                  <van-tag
+                    style="background-color: var(--van-gray-2); color: #666;"
+                    @click="editProductSpec(cartRecord)"
+                  >
+                    {{ cartRecord.option.title }}
+                  </van-tag>
+                </div>
+              </template>
+              <template #num>
+                <van-stepper
+                  :default-value="cartRecord.amount"
+                  @change="(value) => changeAmount(cartRecord, value)"
+                  :max="cartRecord.option.stock"
+                ></van-stepper>
+              </template>
+            </van-card>
+            <template #right>
+              <van-button
+                square
+                text="删除"
+                type="danger"
+                @click="removeFromCart(cartRecord.option.id)"
+                style="height: 100%;"
+              ></van-button>
+            </template>
+          </van-swipe-cell>
+        </template>
+        <product-spec-picker
+          v-model:show="showSpecPicker"
+          :product="editingCartRecord.product"
+          :default-item-ids="editingCartRecord.selectedItemIds"
+          :default-amount="editingCartRecord.amount"
+          @select="selectProductSpec"
+        ></product-spec-picker>
+      </div>
+      <van-submit-bar
+        :price="$store.getters.totalPrice * 30"
+        button-text="生成订单"
+        style="bottom: 50px;"
+        @submit="exportOrder"
+      >
+        <span @click="clearCart">清空</span>
+      </van-submit-bar>
+    </template>
+    <!-- 购物车页 END -->
+
+
+
+    <!-- 商品规格选择器组件 START -->
+    <template id="productSpecPickerComponent">
+      <van-popup
+        :show="show"
+        :style="{ height: '80%' }"
+        closeable
+        position="bottom"
+        @close="onClose"
+      >
+        <div style="height: 100%; overflow-y: auto; padding: 20px 10px 70px 10px; box-sizing: border-box;">
+          <van-space
+            direction="vertical"
+            style="width: 100%;"
+            :size="15"
+          >
+            <div style="display: flex;">
+              <van-image
+                width="100"
+                height="100"
+                radius="10"
+                :src="product.thumb"
+              ></van-image>
+              <div style="margin-left: 15px;">
+                <div>
+                  <span style="color: var(--van-card-price-color);">
+                    ¥ <span style="font-size: var(--van-font-size-lg);">{{ Number(filteredOptionPrice * 0.3).toFixed(2) }}</span>
+                  </span>
+                  <span class="van-card__origin-price">{{ Number(filteredOptionPrice).toFixed(2) }}</span>
+                </div>
+                <div style="color: var(--van-card-desc-color); margin-top: 10px;">
+                  库存 {{ filteredOptionStock }} 件
+                </div>
+              </div>
+            </div>
+            <template v-for="(spec, index) in product.specs" :key="index">
+              <div>
+                <div style="margin-bottom: 10px; font-weight: var(--van-font-bold);">{{ spec.title }}</div>
+                <van-space wrap>
+                  <van-tag
+                    v-for="item in spec.items"
+                    type="danger"
+                    size="large"
+                    round
+                    :plain="isSelectedItemId(item.id)"
+                    style="padding: 6px 12px; cursor: pointer;"
+                    :style="isDisabledItemId(item.id)
+                      ? { backgroundColor: 'var(--van-gray-2)', color: '#ccc' }
+                      : (isSelectedItemId(item.id) ? { backgroundColor: '#ffe1e1' } : { backgroundColor: 'var(--van-gray-2)', color: '#666' })"
+                    @click="toggleSelectItemId(item.id)"
+                  >
+                    {{ item.title }}
+                  </van-tag>
+                </van-space>
+              </div>
+            </template>
+            <van-row>
+              <van-col span="12">
+                <span style="font-weight: var(--van-font-bold);">数量</span>
+              </van-col>
+              <van-col span="12" style="text-align: right;">
+                <van-stepper
+                  v-model="amount"
+                  :max="filteredOptionStock"
+                ></van-stepper>
+              </van-col>
+            </van-row>
+          </van-space>
+        </div>
+        <van-action-bar>
+          <van-action-bar-button
+            type="danger"
+            @click="onConfirm"
+          >
+            {{ buttonText }}
+          </van-action-bar-button>
+        </van-action-bar>
+      </van-popup>
+    </template>
+    <!-- 商品规格选择器组件 END -->
+
+
+
+    <div id="app">
+      <van-nav-bar
+        v-if="!!$route.meta.pageTitle"
+        :title="$route.meta.pageTitle"
+        :left-arrow="$route.meta.pageBack"
+        @click-left="backPage"
+      ></van-nav-bar>
+      <router-view></router-view>
+      <van-tabbar v-if="$route.meta.showTabBar" route>
+        <van-tabbar-item
+          replace
+          to="/"
+          name="home"
+          icon="home-o"
+        >
+          首页
+        </van-tabbar-item>
+        <van-tabbar-item
+          replace
+          to="/cart"
+          name="cart"
+          icon="cart-o"
+        >
+          购物车
+        </van-tabbar-item>
+      </van-tabbar>
+    </div>
+
+    <script src="https://unpkg.com/axios@1.7.7/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/vue@3.5.6/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vant@4.9.6/lib/vant.min.js"></script>
+    <script src="https://unpkg.com/vue-router@4.4.5/dist/vue-router.global.js"></script>
+    <script src="https://unpkg.com/vuex@4.1.0/dist/vuex.global.js"></script>
+    <script src="https://unpkg.com/lodash@4.17.21/lodash.js"></script>
+    <script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script>
+      const request = axios.create({
+        baseURL: 'https://cs.sdxpos.com/shop/client/goods',
+        headers: {
+          'session-id': 123,
+          'client-type': 'wxapp',
+          'shop-id': 1162,
+        }
+      });
+
+
+
+      // 商品分类页
+      const categoryListPage = {
+        template: '#categoryListPage',
+        data() {
+          return {
+            refreshing: false,
+            categoryGroupList: []
+          }
+        },
+        created() {
+          this.getCategoryList(); 
+        },
+        methods: {
+          getCategoryList() {
+            request.get('/category/list?child_shop_id=')
+              .then(response => {
+                this.refreshing = false;
+                this.categoryGroupList = response.data.data;
+              });
+          },
+          onRefresh() {
+            this.getCategoryList();
+          },
+          toSearch() {
+            this.$router.push(`/search`);
+          }
+        }
+      };
+
+
+
+      // 搜索页
+      const searchPage = {
+        template: '#searchPage',
+        props: {
+          keyword: {
+            type: String,
+            default: ''
+          }
+        },
+        data() {
+          const historyKeywords = JSON.parse(window.localStorage.getItem('historyKeywords'));
+          return {
+            historyKeywords: _.isArray(historyKeywords) ? historyKeywords : [],
+            searchKeyword: '',
+            removing: false
+          }
+        },
+        watch: {
+          historyKeywords: {
+            handler(value) {
+              localStorage.setItem('historyKeywords', JSON.stringify(value))
+            },
+            deep: true
+          }
+        },
+        mounted() {
+          this.$watch(
+            () => this.$route,
+            () => {
+              this.$refs.search.focus();
+              this.searchKeyword = this.keyword;
+              this.$nextTick(() => {
+                const searchInput = this.$refs.search.$el.querySelector('input');
+                if (searchInput) {
+                  searchInput.setSelectionRange(-1, -1);
+                }
+              })
+            },
+            { immediate: true }
+          )
+        },
+        methods: {
+          onSearch(value) {
+            this.addHistoryKeyword(value);
+            this.$router.push(`/products?keyword=${value}`);
+          },
+          addHistoryKeyword(historyKeyword) {
+            if (historyKeyword === '') {
+              return;
+            }
+            this.historyKeywords = _.take(_.concat([historyKeyword], _.without(this.historyKeywords, historyKeyword)), 20);
+          },
+          removeHistoryKeyword(historyKeyword) {
+            if (historyKeyword === '') {
+              return;
+            }
+            this.historyKeywords = _.without(this.historyKeywords, historyKeyword);
+          },
+          removeAllHistoryKeyword() {
+            this.historyKeywords = [];
+          }
+        }
+      };
+
+
+
+      // 商品列表页
+      const productListPage = {
+        template: '#productListPage',
+        props: {
+          categoryId: {
+            type: Number,
+            default: 0
+          },
+          keyword: {
+            type: String,
+            default: ''
+          }
+        },
+        data() {
+          return {
+            refreshing: false,
+            loading: false,
+            finished: false,
+            page: 1,
+            productList: []
+          };
+        },
+        created() {
+          this.$watch(
+            () => this.$route,
+            () => {
+              this.refreshing = false;
+              this.loading = false;
+              this.finished = false;
+              this.page = 1;
+              this.productList = [];
+              this.onLoad();
+            },
+            { immediate: true }
+          );
+        },
+        methods: {
+          onLoad() {
+            request.get(`/list?title=${this.keyword}&category_ids=${this.categoryId}&group_ids=&page=${this.page}&page_size=20&sort=&by=desc&lat=&lng=&coupon_id=&dycoupon_id=&from_dycoupon_list=&activity_id=&child_shop_id=&type=&recommend=`)
+              .then(response => {
+                if (this.refreshing) {
+                  this.refreshing = false;
+                  this.productList = [];
+                }
+                this.productList = this.productList.concat(response.data.list);
+                this.loading = false;
+                if (this.page >= response.data.pageCount) {
+                  this.finished = true;
+                } else {
+                  this.page++;
+                }
+              });
+          },
+          onRefresh() {
+            this.finished = false;
+            this.loading = true;
+            this.page = 1;
+            this.onLoad();
+          },
+          toSearch() {
+            this.$router.push(this.keyword ? `/search?keyword=${this.keyword}` : '/search');
+          },
+          onCancel() {
+            this.$router.push(`/products`);
+          }
+        }
+      };
+
+
+
+      // 商品详情页
+      const productDetailPage = {
+        template: '#productDetailPage',
+        props: {
+          productId: {
+            type: Number,
+            default: 0
+          }
+        },
+        data() {
+          return {
+            loading: false,
+            product: {
+              id: 0,
+              title: '',
+              price: [0],
+              min_price: '',
+              max_price: '',
+              thumbs: [],
+              specs: [],
+              options: []
+            },
+            amount: 1,
+            selectedItemIds: [],
+            showSpecPicker: false
+          };
+        },
+        created() {
+          this.$watch(
+            () => this.$route,
+            () => {
+              this.amount = 1;
+              this.selectedItemIds = [];
+              this.showSpecPicker = false;
+              this.getProduct();
+            },
+            { immediate: true }
+          );
+        },
+        computed: {
+          optionCount() {
+            return this.product.options.length;
+          },
+          showPrice() {
+            return this.product.options.length === 0 ? 0 : _.min(_.map(this.product.options, 'price'));
+          },
+          showStock() {
+            return this.product.options.length === 0 ? 0 : _.sum(_.map(this.product.options, 'stock'));
+          },
+          selectedOption() {
+            if (this.selectedItemIds.length === 0 || this.selectedItemIds.length !== this.product.specs.length) {
+              return;
+            }
+            return _.find(this.product.options, option => _.isEqual(_.sortBy(option.item_ids), _.sortBy(this.selectedItemIds)));
+          }
+        },
+        methods: {
+          getProduct() {
+            this.loading = true;
+            request.get(`/details-new?id=${this.productId}&activity_id=undefined`)
+              .then(response => {
+                this.loading = false;
+                this.product = this.convertProduct(response.data.data);
+              });
+          },
+          convertProduct(rawProduct) {
+            return {
+              id: Number(rawProduct.id),
+              title: rawProduct.title,
+              sub_title: rawProduct.sub_title,
+              thumb: rawProduct.thumb,
+              thumbs: rawProduct.thumbs,
+              sales_count: Number(rawProduct.sales_count),
+              specs: _.map(rawProduct.specs, spec => ({
+                id: Number(spec.id),
+                title: spec.title,
+                items: _.map(spec.items, item => ({
+                  id: Number(item.id),
+                  title: item.title,
+                }))
+              })),
+              options: _.map(_.values(rawProduct.options), option => {
+                return {
+                  id: Number(option.id),
+                  stock: Number(option.stock),
+                  price: Number(option.price),
+                  item_ids: _.map(_.sortBy(option.specs.split(',')), itemId => Number(itemId)),
+                  title: option.option_title.join(','),
+                };
+              })
+            };
+          },
+          previewImage(startPosition) {
+            vant.showImagePreview({
+              images: this.product.thumbs,
+              startPosition: startPosition,
+              closeable: true
+            });
+          },
+          selectProductSpec(itemIds, amount, confirm) {
+            this.selectedItemIds = itemIds;
+            this.amount = amount;
+            if (confirm) {
+              this.$store.dispatch('addToCart', {
+                product: this.product,
+                option_id: this.selectedOption.id,
+                amount: this.amount
+              });
+              vant.showSuccessToast('加购成功');
+            }
+          }
+        }
+      };
+
+
+
+      // 购物车页
+      const cartListPage = {
+        template: '#cartListPage',
+        data() {
+          return {
+            showSpecPicker: false,
+            editingCartRecord: {
+              product: {},
+              amount: 1,
+              option_id: 0,
+              option: {},
+              selectedItemIds: []
+            },
+          };
+        },
+        computed: {
+          cartList() {
+            const rawCartList = this.$store.state.cartList;
+            return _.map(rawCartList, item => {
+              item.option = _.find(item.product.options, option => option.id === item.option_id);
+              return item;
+            });
+          },
+          selectedOption() {
+            if (this.editingCartRecord.selectedItemIds.length === 0 || this.editingCartRecord.selectedItemIds.length !== this.editingCartRecord.product.specs.length) {
+              return;
+            }
+            return _.find(this.editingCartRecord.product.options, option => _.isEqual(_.sortBy(option.item_ids), _.sortBy(this.editingCartRecord.selectedItemIds)));
+          }
+        },
+        methods: {
+          removeFromCart(optionId) {
+            this.$store.dispatch('removeFromCart', optionId);
+          },
+          clearCart() {
+            this.$store.dispatch('clearCart');
+          },
+          changeAmount(cartRecord, amount) {
+            this.$store.dispatch('updateCart', {
+              product: cartRecord.product,
+              amount: amount,
+              option_id: cartRecord.option_id,
+              new_option_id: cartRecord.option_id,
+            });
+          },
+          editProductSpec(cartRecord) {
+            this.editingCartRecord = cartRecord;
+            this.editingCartRecord.selectedItemIds = cartRecord.option.item_ids;
+            this.showSpecPicker = true;
+          },
+          selectProductSpec(selectedItemIds, amount, confirm) {
+            this.editingCartRecord.selectedItemIds = selectedItemIds;
+            this.editingCartRecord.amount = amount;
+            if (confirm) {
+              this.$store.dispatch('updateCart', {
+                product: this.editingCartRecord.product,
+                amount: this.editingCartRecord.amount,
+                option_id: this.editingCartRecord.option_id,
+                new_option_id: this.selectedOption.id,
+              });
+              vant.showSuccessToast('修改成功');
+            }
+          },
+          async getBufferFromImageUrls(urls) {
+            const promises = _.map(urls, url => axios.get(url, {
+              responseType: 'arraybuffer',
+            }));
+            const results = await Promise.all(promises);
+            return results.map(result => result.data);
+          },
+          async exportOrder() {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('订单', {views:[{state: 'frozen', xSplit: 1, ySplit:1}]});
+            worksheet.columns = [
+              {
+                header: '预览图',
+                key: 'thumb',
+                width: 50,
+              },
+              {
+                header: '名称',
+                key: 'title',
+                width: 30,
+              },
+              {
+                header: '规格',
+                key: 'spec',
+                width: 20,
+              },
+              {
+                header: '单价（原价）',
+                key: 'original_price',
+                width: 20,
+              },
+              {
+                header: '单价（折后价）',
+                key: 'price',
+                width: 20,
+              },
+              {
+                header: '数量',
+                key: 'amount',
+                width: 10,
+              }
+            ];
+            _.forEach(this.cartList, cartRecord => {
+              const row = worksheet.addRow([
+                '',
+                cartRecord.product.title,
+                cartRecord.option.title,
+                Number(cartRecord.option.price).toFixed(2),
+                Number(cartRecord.option.price * 0.3).toFixed(2),
+                cartRecord.amount,
+              ]);
+              row.height = 200;
+            });
+            const buffers = await this.getBufferFromImageUrls(_.map(this.cartList, cartRecord => cartRecord.product.thumb));
+            _.forEach(buffers, (buffer, index) => {
+              const imageId = workbook.addImage({
+                buffer: buffer,
+              });
+              console.log(imageId);
+              worksheet.addImage(imageId, {
+                tl: { col: 0, row: index + 1 },
+                br: { col: 1, row: index + 2 },
+                editAs: 'undefined',
+              });
+            });
+            workbook.xlsx.writeBuffer().then((buffer) => {
+              const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+              saveAs(blob, '订单.xlsx');
+            });
+          }
+        }
+      };
+
+
+
+      // 商品规格选择器
+      const productSpecPickerComponent = {
+        template: '#productSpecPickerComponent',
+        props: {
+          show: {
+            type: Boolean,
+            default: false
+          },
+          product: {
+            type: Object,
+            default: {}
+          },
+          defaultItemIds: {
+            type: Array,
+            default: []
+          },
+          defaultAmount: {
+            type: Number,
+            default: 0
+          },
+          buttonText: {
+            type: String,
+            default: '确定'
+          }
+        },
+        emits: ['update:show', 'select'],
+        data() {
+          return {
+            selectedItemIds: [],
+            amount: 1
+          }
+        },
+        watch: {
+          defaultItemIds: {
+            handler(itemIds) {
+              this.selectedItemIds = itemIds;
+            },
+            immediate: true
+          },
+          defaultAmount: {
+            handler(amount) {
+              this.amount = amount;
+            },
+            immediate: true
+          }
+        },
+        computed: {
+          allItems() {
+            return _.flatten(_.map(this.product.specs, spec => {
+              return _.map(spec.items, item => {
+                item.spec_id = spec.id;
+                return item;
+              });
+            }));
+          },
+          filteredOptionPrice() {
+            const filteredOptions = this.filteredOptions(this.selectedItemIds);
+            return filteredOptions.length === 0 ? 0 : _.min(_.map(filteredOptions, 'price'));
+          },
+          filteredOptionStock() {
+            const filteredOptions = this.filteredOptions(this.selectedItemIds);
+            return filteredOptions.length === 0 ? 0 : _.sum(_.map(filteredOptions, 'stock'));
+          },
+          selectedOption() {
+            if (this.selectedItemIds.length === 0 || this.selectedItemIds.length !== this.product.specs.length) {
+              return;
+            }
+            return _.find(this.product.options, option => _.isEqual(_.sortBy(option.item_ids), _.sortBy(this.selectedItemIds)));
+          }
+        },
+        methods: {
+          filteredOptions(itemIds) {
+            let filteredOptions = this.product.options;
+            for (var i = 0; i < itemIds.length; i++) {
+              filteredOptions = _.filter(filteredOptions, option => _.includes(option.item_ids, itemIds[i]));
+            }
+            return filteredOptions;
+          },
+          getSpecIdByItemId(itemId) {
+            return _.find(this.allItems, item => item.id == itemId).spec_id;
+          },
+          getItemIdsBySpecId(specId) {
+            return _.map(_.filter(this.allItems, item => item.spec_id == specId), 'id');
+          },
+          isDisabledItemId(itemId) {
+            const sameSpecItemIds = this.getItemIdsBySpecId(this.getSpecIdByItemId(itemId));
+            const itemIds = _.concat(_.filter(this.selectedItemIds, itemId => !_.includes(sameSpecItemIds, itemId)), itemId);
+            const filteredOptions = this.filteredOptions(itemIds);
+            return !_.some(filteredOptions, option => option.stock != 0);
+          },
+          isSelectedItemId(itemId) {
+            return _.includes(this.selectedItemIds, itemId);
+          },
+          toggleSelectItemId(itemId) {
+            if (_.includes(this.selectedItemIds, itemId)) {
+              this.selectedItemIds = _.without(this.selectedItemIds, itemId);
+            } else {
+              if (this.isDisabledItemId(itemId)) {
+                return;
+              }
+              const sameSpecItemIds = this.getItemIdsBySpecId(this.getSpecIdByItemId(itemId));
+              this.selectedItemIds = _.concat(_.without(this.selectedItemIds, ...sameSpecItemIds), itemId);
+            }
+          },
+          onClose() {
+            this.$emit('select', this.selectedItemIds, this.amount, false);
+            this.$emit('update:show', false);
+          },
+          onConfirm() {
+            if (this.selectedItemIds.length != this.product.specs.length) {
+              vant.showToast('请选择完整规格');
+              return;
+            }
+            if (this.amount > this.selectedOption.stock) {
+              vant.showToast('库存不足');
+              return;
+            }
+            this.$emit('select', this.selectedItemIds, this.amount, true);
+            this.$emit('update:show', false);
+          }
+        }
+      };
+
+
+
+      // 路由管理
+      const router = VueRouter.createRouter({
+        history: VueRouter.createWebHashHistory(),
+        routes: [
+          {
+            path: '/',
+            component: categoryListPage,
+            meta: {
+              pageTitle: '首页',
+              pageBack: false,
+              showTabBar: true
+            }
+          },
+          {
+            path: '/search',
+            component: searchPage,
+            props: route => ({ keyword: route.query.keyword || '' }),
+            meta: {
+              pageTitle: '搜索',
+              pageBack: true,
+              showTabBar: false
+            }
+          },
+          {
+            path: '/products',
+            component: productListPage,
+            props: route => ({ categoryId: Number(route.query.categoryId || 0), keyword: route.query.keyword || '' }),
+            meta: {
+              pageTitle: '商品列表',
+              pageBack: true,
+              showTabBar: false
+            }
+          },
+          {
+            path: '/products/:productId',
+            component: productDetailPage,
+            props: route => ({ productId: Number(route.params.productId) }),
+            meta: {
+              pageTitle: '商品详情',
+              pageBack: true,
+              showTabBar: false
+            }
+          },
+          {
+            path: '/cart',
+            component: cartListPage,
+            meta: {
+              pageTitle: '购物车',
+              pageBack: false,
+              showTabBar: true
+            }
+          },
+        ]
+      });
+
+
+
+      // 状态管理
+      const store = Vuex.createStore({
+        state () {
+          const cartList = JSON.parse(localStorage.getItem('cartList') || '[]')
+          return {
+            cartList: cartList
+          };
+        },
+        getters: {
+          totalAmount(state) {
+            return _.sum(_.map(state.cartList, item => Number(item.amount)));
+          },
+          totalPrice(state) {
+            return _.sum(_.map(state.cartList, item => {
+              const option = _.find(item.product.options, option => option.id === item.option_id);
+              return Number(item.amount) * Number(option.price);
+            }));
+          }
+        },
+        mutations: {
+          addToCart(state, productRecord) {
+            const record = state.cartList.find(item => item.option_id === productRecord.option_id);
+            if (record) {
+              record.product = product;
+              record.amount += amount;
+            } else {
+              state.cartList.push(productRecord);
+            }
+          },
+          updateCart(state, productRecord) {
+            const record = state.cartList.find(item => item.option_id === productRecord.option_id);
+            record.option_id = productRecord.new_option_id;
+            record.amount = productRecord.amount;
+          },
+          removeFromCart(state, optionId) {
+            state.cartList = _.filter(state.cartList, item => item.option_id != optionId);
+          },
+          clearCart(state) {
+            state.cartList = [];
+          }
+        },
+        actions: {
+          addToCart({ commit }, productRecord) {
+            commit('addToCart', productRecord);
+            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+          },
+          updateCart({ commit }, productRecord) {
+            commit('updateCart', productRecord);
+            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+          },
+          removeFromCart({ commit }, optionId) {
+            commit('removeFromCart', optionId);
+            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+          },
+          clearCart({ commit }) {
+            commit('clearCart');
+            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+          }
+        }
+      });
+
+
+
+      const app = Vue.createApp({
+          data() {
+            return {};
+          },
+          methods: {
+            backPage() {
+              if (this.$router.options.history.state) {
+                this.$router.push('/');
+              } else {
+                this.$router.back();
+              }
+            }
+          }
+        })
+        .use(vant)
+        .use(vant.Lazyload, { lazyComponent: true })
+        .use(router)
+        .use(store)
+        .component('productSpecPicker', productSpecPickerComponent)
+        .mount("#app");
+    </script>
+  </body>
+</html>
