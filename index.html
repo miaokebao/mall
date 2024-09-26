@@ -144,7 +144,7 @@
           v-model="searchKeyword"
           placeholder="请输入搜索内容"
           ref="search"
-          @search="onSearch"
+          @search="searchHistoryKeyword"
         ></van-search>
       </van-sticky>
       <div style="height: calc(100% - 100px); background-color: #fff;">
@@ -160,31 +160,33 @@
               span="12"
               style="text-align: right;"
             >
-              <div v-if="removing">
+              <div v-if="deleting">
                 <span
                   style="color: var(--van-red);"
-                  @click="removeAllHistoryKeyword"
+                  @click="deleteAllHistoryKeyword"
                 >
                   清空
                 </span>
                 <van-divider vertical></van-divider>
-                <span @click="removing = false">完成</span>
+                <span @click="deleting = false">完成</span>
               </div>
-              <van-icon
+              <span
                 v-else
-                name="delete-o"
-                @click="removing = true"
-              ></van-icon>
+                @click="deleting = true"
+              >
+                管理
+              </span>
             </van-col>
           </van-row>
           <van-space>
             <van-tag
               v-for="historyKeyword in historyKeywords"
               :key="historyKeyword"
-              :closeable="removing"
+              :closeable="deleting"
               size="large"
               style="background-color: var(--van-gray-2); color: #666;"
-              @close="removeHistoryKeyword(historyKeyword)"
+              @click="deleting ? deleteHistoryKeyword(historyKeyword) : searchHistoryKeyword(historyKeyword)"
+              @close="deleteHistoryKeyword(historyKeyword)"
             >
               {{ historyKeyword }}
             </van-tag>
@@ -316,55 +318,106 @@
         v-else
         style="padding-bottom: 50px;"
       >
+        <div style="text-align: right; margin: 10px;">
+          <span v-if="deleting" @click="deleting = false">完成</span>
+          <span v-else @click="deleting = true">编辑</span>
+        </div>
         <van-swipe-cell
           v-for="(cartRecord, index) in cartList"
           :key="index"
-          style="margin: 10px 10px 0; border-radius: 10px;"
+          :disabled="deleting"
+          style="margin: 10px; border-radius: 10px; background-color: var(--van-card-background);"
         >
-          <van-card
-            :title="cartRecord.product.title"
-            :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
-            :origin-price="Number(cartRecord.option.price).toFixed(2)"
-            :thumb="cartRecord.product.thumb"
-            @click="$router.push(`/products/${cartRecord.product.id}`)"
-            lazy-load
-          >
-            <template #tags>
-              <van-tag
-                round
-                style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
-                @click="editProductSpec(cartRecord)"
-              >
-                {{ cartRecord.option.title }}
-                <van-icon name="arrow-down"></van-icon>
-              </van-tag>
-            </template>
-            <template #num>
-              <van-stepper
-                :default-value="cartRecord.amount"
-                @change="(value) => changeAmount(cartRecord, value)"
-                :max="cartRecord.option.stock"
-                @click.stop
-              ></van-stepper>
-            </template>
-          </van-card>
+          <div style="display: flex; border-radius: 10px;">
+            <van-checkbox
+              v-if="deleting"
+              :model-value="isCheckedDeleting(cartRecord.id)"
+              @update:model-value="(checked) => toggleDeletingCheck(cartRecord.id, checked)"
+              style="margin-left: 16px;"
+            ></van-checkbox>
+            <van-checkbox
+              v-else
+              :model-value="cartRecord.selected"
+              @update:model-value="(checked) => changeSelected(cartRecord.id, checked)"
+              style="margin-left: 16px;"
+            ></van-checkbox>
+            <van-card
+              :title="cartRecord.product.title"
+              :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
+              :origin-price="Number(cartRecord.option.price).toFixed(2)"
+              :thumb="cartRecord.product.thumb"
+              @click="$router.push(`/products/${cartRecord.product.id}`)"
+              lazy-load
+              style="flex: 1 1 0; margin: 0;"
+            >
+              <template #tags>
+                <van-tag
+                  round
+                  style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
+                  @click.stop="editProductSpec(cartRecord)"
+                >
+                  {{ cartRecord.option.title }}
+                  <van-icon name="arrow-down"></van-icon>
+                </van-tag>
+              </template>
+              <template #num>
+                <van-stepper
+                  :default-value="cartRecord.amount"
+                  @change="(value) => changeAmount(cartRecord.id, value)"
+                  :max="cartRecord.option.stock"
+                  @click.stop
+                ></van-stepper>
+              </template>
+            </van-card>
+          </div>
           <template #right>
             <van-button
               square
               text="删除"
               type="danger"
-              @click="removeFromCart(cartRecord.option.id)"
+              @click="deleteFromCart(cartRecord.id)"
               style="height: 100%;"
             ></van-button>
           </template>
         </van-swipe-cell>
         <van-submit-bar
+          v-if="deleting"
+          style="bottom: 50px;"
+        >
+          <template #default>
+            <van-checkbox
+              :model-value="isDeletingCheckAll"
+              @click="toggleDeletingCheckAll"
+            >
+              全选
+            </van-checkbox>
+            <div class="van-submit-bar__text"></div>
+          </template>
+          <template #button>
+            <van-button
+              round
+              style="width: var(--van-submit-bar-button-width); height: var(--van-submit-bar-button-height); font-weight: var(--van-font-bold);"
+              @click="deleteChecked"
+            >
+              删除
+            </van-button>
+          </template>
+        </van-submit-bar>
+        <van-submit-bar
+          v-else
           :price="$store.getters.totalPrice * 30"
-          button-text="生成订单"
+          :button-text="`生成订单(${$store.getters.totalSelectedAmount})`"
           style="bottom: 50px;"
           @submit="exportOrder"
         >
-          <span @click="clearCart">清空</span>
+          <template #default>
+            <van-checkbox
+              :model-value="isCheckAll"
+              @click="toggleCartCheckAll"
+            >
+              全选
+            </van-checkbox>
+          </template>
         </van-submit-bar>
         <product-spec-picker
           v-model:show="showSpecPicker"
@@ -574,7 +627,7 @@
           return {
             historyKeywords: _.isArray(historyKeywords) ? historyKeywords : [],
             searchKeyword: '',
-            removing: false
+            deleting: false
           }
         },
         watch: {
@@ -602,7 +655,7 @@
           )
         },
         methods: {
-          onSearch(value) {
+          searchHistoryKeyword(value) {
             this.addHistoryKeyword(value);
             this.$router.push(`/products?keyword=${value}`);
           },
@@ -612,13 +665,13 @@
             }
             this.historyKeywords = _.take(_.concat([historyKeyword], _.without(this.historyKeywords, historyKeyword)), 20);
           },
-          removeHistoryKeyword(historyKeyword) {
+          deleteHistoryKeyword(historyKeyword) {
             if (historyKeyword === '') {
               return;
             }
             this.historyKeywords = _.without(this.historyKeywords, historyKeyword);
           },
-          removeAllHistoryKeyword() {
+          deleteAllHistoryKeyword() {
             this.historyKeywords = [];
           }
         }
@@ -814,6 +867,8 @@
         template: '#cartListPage',
         data() {
           return {
+            deleting: false,
+            deletingIds: [],
             showSpecPicker: false,
             editingCartRecord: {
               product: {},
@@ -831,21 +886,60 @@
               item.option = _.find(item.product.options, option => option.id === item.option_id);
               return item;
             });
+          },
+          isCheckAll() {
+            return _.every(this.cartList, item => item.selected);
+          },
+          isDeletingCheckAll() {
+            return _.isEqual(_.sortBy(this.deletingIds), _.sortBy(_.map(this.cartList, 'id')));
           }
         },
         methods: {
-          removeFromCart(optionId) {
-            this.$store.dispatch('removeFromCart', optionId);
+          enterDeleting() {
+            this.deleting = true;
+            this.deletingIds = [];
           },
-          clearCart() {
-            this.$store.dispatch('clearCart');
+          isCheckedDeleting(id) {
+            return _.includes(this.deletingIds, id);
           },
-          changeAmount(cartRecord, amount) {
+          toggleDeletingCheckAll() {
+            if (this.isDeletingCheckAll) {
+              this.deletingIds = [];
+            } else {
+              this.deletingIds = _.map(this.cartList, 'id');
+            }
+          },
+          toggleDeletingCheck(id, checked) {
+            if (checked) {
+              this.deletingIds.push(id);
+            } else {
+              this.deletingIds = _.without(this.deletingIds, id);
+            }
+          },
+          deleteChecked() {
+            if (this.deletingIds.length === 0) {
+              return;
+            }
+            _.forEach(this.deletingIds, id => {
+              this.$store.dispatch('deleteFromCart', id);
+            });
+          },
+          toggleCartCheckAll() {
+            this.$store.dispatch('toggleCartCheckAll', !this.isCheckAll);
+          },
+          deleteFromCart(id) {
+            this.$store.dispatch('deleteFromCart', id);
+          },
+          changeAmount(id, amount) {
             this.$store.dispatch('updateCart', {
-              product: cartRecord.product,
+              id: id,
               amount: amount,
-              option_id: cartRecord.option_id,
-              new_option_id: cartRecord.option_id,
+            });
+          },
+          changeSelected(id, selected) {
+            this.$store.dispatch('updateCart', {
+              id: id,
+              selected: selected,
             });
           },
           editProductSpec(cartRecord) {
@@ -869,10 +963,9 @@
               return;
             }
             this.$store.dispatch('updateCart', {
-              product: this.editingCartRecord.product,
+              id: this.editingCartRecord.id,
               amount: this.editingCartRecord.amount,
-              option_id: this.editingCartRecord.option_id,
-              new_option_id: selectedOption.id,
+              option_id: selectedOption.id,
             });
             vant.showSuccessToast('修改成功');
           },
@@ -890,7 +983,7 @@
               {
                 header: '预览图',
                 key: 'thumb',
-                width: 50,
+                width: 30,
               },
               {
                 header: '名称',
@@ -918,7 +1011,8 @@
                 width: 10,
               }
             ];
-            _.forEach(this.cartList, cartRecord => {
+            const selectedCartList = _.filter(this.cartList, cartRecord => cartRecord.selected);
+            _.forEach(selectedCartList, cartRecord => {
               const row = worksheet.addRow([
                 '',
                 cartRecord.product.title,
@@ -929,12 +1023,11 @@
               ]);
               row.height = 200;
             });
-            const buffers = await this.getBufferFromImageUrls(_.map(this.cartList, cartRecord => cartRecord.product.thumb));
+            const buffers = await this.getBufferFromImageUrls(_.map(selectedCartList, cartRecord => cartRecord.product.thumb));
             _.forEach(buffers, (buffer, index) => {
               const imageId = workbook.addImage({
                 buffer: buffer,
               });
-              console.log(imageId);
               worksheet.addImage(imageId, {
                 tl: { col: 0, row: index + 1 },
                 br: { col: 1, row: index + 2 },
@@ -1132,7 +1225,12 @@
       });
 
 
-
+      function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = Math.random() * 16 | 0, v = c === 'x'? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
       // 状态管理
       const store = Vuex.createStore({
         state () {
@@ -1145,52 +1243,81 @@
           totalAmount(state) {
             return _.sum(_.map(state.cartList, item => Number(item.amount)));
           },
+          totalSelectedAmount(state) {
+            return _.sum(_.map(state.cartList, item => item.selected ? Number(item.amount) : 0));
+          },
           totalPrice(state) {
             return _.sum(_.map(state.cartList, item => {
+              if (!item.selected) {
+                return 0;
+              }
               const option = _.find(item.product.options, option => option.id === item.option_id);
               return Number(item.amount) * Number(option.price);
             }));
-          }
+          },
         },
         mutations: {
+          toggleCartCheckAll(state, selected) {
+            state.cartList = _.map(state.cartList, item => {
+              item.selected = selected;
+              return item;
+            });
+          },
           addToCart(state, productRecord) {
+            if (!productRecord.amount) {
+              return;
+            }
             const record = state.cartList.find(item => item.option_id === productRecord.option_id);
             if (record) {
-              record.product = product;
-              record.amount += amount;
+              if (typeof productRecord.product !== 'undefined') {
+                record.product = productRecord.product;
+              }
+              record.amount += productRecord.amount;
             } else {
+              productRecord.id = generateUUID();
+              productRecord.selected = true;
               state.cartList.push(productRecord);
             }
           },
-          updateCart(state, productRecord) {
-            const record = state.cartList.find(item => item.option_id === productRecord.option_id);
-            record.option_id = productRecord.new_option_id;
-            record.amount = productRecord.amount;
+          deleteFromCart(state, id) {
+            state.cartList = _.filter(state.cartList, item => item.id != id);
           },
-          removeFromCart(state, optionId) {
-            state.cartList = _.filter(state.cartList, item => item.option_id != optionId);
+          updateCart(state, updateData) {
+            if (!updateData.id) {
+              return;
+            }
+            const record = state.cartList.find(item => item.id === updateData.id);
+            if (typeof updateData.product !== 'undefined') {
+              record.product = updateData.product;
+            }
+            if (typeof updateData.option_id !== 'undefined') {
+              record.option_id = updateData.option_id;
+            }
+            if (typeof updateData.amount !== 'undefined') {
+              record.amount = updateData.amount;
+            }
+            if (typeof updateData.selected !== 'undefined') {
+              record.selected = updateData.selected;
+            }
           },
-          clearCart(state) {
-            state.cartList = [];
-          }
         },
         actions: {
+          toggleCartCheckAll({ commit }, selected) {
+            commit('toggleCartCheckAll', selected);
+            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+          },
           addToCart({ commit }, productRecord) {
             commit('addToCart', productRecord);
+            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+          },
+          deleteFromCart({ commit }, id) {
+            commit('deleteFromCart', id);
             localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
           },
           updateCart({ commit }, productRecord) {
             commit('updateCart', productRecord);
             localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
           },
-          removeFromCart({ commit }, optionId) {
-            commit('removeFromCart', optionId);
-            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
-          },
-          clearCart({ commit }) {
-            commit('clearCart');
-            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
-          }
         }
       });
 
