@@ -194,7 +194,7 @@
     <template id="productDetailPage">
       <van-space
         direction="vertical"
-        style="width: 100%;"
+        style="width: 100%; padding-bottom: 65px;"
         :size="16"
       >
         <van-swipe
@@ -280,7 +280,7 @@
         :product="product"
         :default-item-ids="selectedItemIds"
         :default-amount="amount"
-        :button-text="加入购物车"
+        button-text="加入购物车"
         @select="selectProductSpec"
       ></product-spec-picker>
     </template>
@@ -364,7 +364,7 @@
           :product="editingCartRecord.product"
           :default-item-ids="editingCartRecord.selectedItemIds"
           :default-amount="editingCartRecord.amount"
-          :button-text="确认"
+          button-text="确认"
           @select="selectProductSpec"
         ></product-spec-picker>
       </div>
@@ -726,6 +726,12 @@
           },
           showStock() {
             return this.product.options.length === 0 ? 0 : _.sum(_.map(this.product.options, 'stock'));
+          },
+          selectedOption() {
+            if (this.selectedItemIds.length === 0 || this.selectedItemIds.length !== this.product.specs.length) {
+              return;
+            }
+            return _.find(this.product.options, option => _.isEqual(_.sortBy(option.item_ids), _.sortBy(this.selectedItemIds)));
           }
         },
         methods: {
@@ -775,18 +781,9 @@
             this.selectedItemIds = itemIds;
             this.amount = amount;
             if (confirm) {
-              if (this.selectedItemIds.length === 0 || this.selectedItemIds.length != this.product.specs.length) {
-                vant.showToast('请选择完整规格');
-                return;
-              }
-              const selectedOption = _.find(this.product.options, option => _.isEqual(_.sortBy(option.item_ids), _.sortBy(this.selectedItemIds)));
-              if (this.amount > selectedOption.stock) {
-                vant.showToast('库存不足');
-                return;
-              }
               this.$store.dispatch('addToCart', {
                 product: this.product,
-                option_id: selectedOption.id,
+                option_id: this.selectedOption.id,
                 amount: this.amount
               });
               vant.showSuccessToast('加购成功');
