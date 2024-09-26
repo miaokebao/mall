@@ -326,7 +326,7 @@
             :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
             :origin-price="Number(cartRecord.option.price).toFixed(2)"
             :thumb="cartRecord.product.thumb"
-            @click-thumb="$router.push(`/products/${cartRecord.product.id}`)"
+            @click="$router.push(`/products/${cartRecord.product.id}`)"
             lazy-load
           >
             <template #tags>
@@ -344,6 +344,7 @@
                 :default-value="cartRecord.amount"
                 @change="(value) => changeAmount(cartRecord, value)"
                 :max="cartRecord.option.stock"
+                @click.stop
               ></van-stepper>
             </template>
           </van-card>
@@ -1202,9 +1203,9 @@
           methods: {
             backPage() {
               if (this.$router.options.history.state) {
-                this.$router.push('/');
-              } else {
                 this.$router.back();
+              } else {
+                this.$router.push('/');
               }
             }
           }
