@@ -13,7 +13,7 @@
       href="https://unpkg.com/vant@4.9.6/lib/index.css"
     />
     <style>
-      html, body, #app {
+      html, body, #app, #container {
         height: 100%;
       }
       :root:root {
@@ -42,10 +42,12 @@
   <body>
     <!-- 商品分类页 START -->
     <template id="categoryListPage">
-      <van-search
-        placeholder="请输入搜索内容"
-        @focus="toSearch"
-      ></van-search>
+      <van-sticky :offset-top="46">
+        <van-search
+          placeholder="请输入搜索内容"
+          @focus="toSearch"
+        ></van-search>
+      </van-sticky>
       <div style="padding-top: 20px;">
         <van-pull-refresh
           v-model="refreshing"
@@ -87,11 +89,13 @@
 
     <!-- 商品列表页 START -->
     <template id="productListPage">
-      <van-search
-        v-model="keyword"
-        placeholder="请输入搜索内容"
-        @focus="toSearch"
-      ></van-search>
+      <van-sticky :offset-top="46">
+        <van-search
+          v-model="keyword"
+          placeholder="请输入搜索内容"
+          @focus="toSearch"
+        ></van-search>
+      </van-sticky>
       <van-empty
         v-if="!loading && finished && productList.length == 0"
         image="search"
@@ -135,12 +139,14 @@
 
     <!-- 搜索页 START -->
     <template id="searchPage">
-      <van-search
-        v-model="searchKeyword"
-        placeholder="请输入搜索内容"
-        ref="search"
-        @search="onSearch"
-      ></van-search>
+      <van-sticky :offset-top="46">
+        <van-search
+          v-model="searchKeyword"
+          placeholder="请输入搜索内容"
+          ref="search"
+          @search="onSearch"
+        ></van-search>
+      </van-sticky>
       <div style="height: calc(100% - 100px); background-color: #fff;">
         <div
           v-if="historyKeywords.length > 0"
@@ -455,17 +461,25 @@
 
 
 
-    <div
-      id="app"
-      :style="$route.meta.showTabBar ? { paddingBottom: '60px' } : {}"
-    >
-      <van-nav-bar
-        v-if="!!$route.meta.pageTitle"
-        :title="$route.meta.pageTitle"
-        :left-arrow="$route.meta.pageBack"
-        @click-left="backPage"
-      ></van-nav-bar>
-      <router-view></router-view>
+    <div id="app">
+      <div
+        id="container"
+        :style="{
+          paddingBottom: $route.meta.showTabBar ? '60px' : '0',
+          boxSizing: 'border-box',
+          overflowY: 'auto'
+        }"
+      >
+        <van-sticky>
+          <van-nav-bar
+            v-if="!!$route.meta.pageTitle"
+            :title="$route.meta.pageTitle"
+            :left-arrow="$route.meta.pageBack"
+            @click-left="backPage"
+          ></van-nav-bar>
+        </van-sticky>
+        <router-view></router-view>
+      </div>
       <van-tabbar
         v-if="$route.meta.showTabBar"
         route
