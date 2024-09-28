@@ -13,9 +13,6 @@
       href="https://unpkg.com/vant@4.9.6/lib/index.css"
     />
     <style>
-      html, body, #app, #container {
-        height: 100%;
-      }
       :root:root {
         --van-card-price-color: var(--van-submit-bar-price-color);
         --van-card-background: #fff;
@@ -164,7 +161,7 @@
           @search="searchHistoryKeyword"
         ></van-search>
       </van-sticky>
-      <div style="height: calc(100% - 100px); background-color: #fff;">
+      <div style="height: calc(100vh - 100px); background-color: #fff;">
         <div
           v-if="historyKeywords.length > 0"
           style="padding: 10px;"
@@ -582,8 +579,7 @@
         id="container"
         :style="{
           paddingBottom: $route.meta.showTabBar ? '60px' : '0',
-          boxSizing: 'border-box',
-          overflowY: 'auto'
+          boxSizing: 'border-box'
         }"
       >
         <van-sticky>
