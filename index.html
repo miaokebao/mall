@@ -34,6 +34,41 @@
       .category-grid-item .van-grid-item__content {
         background-color: transparent;
       }
+      .sort-bar .van-dropdown-menu__bar {
+        box-shadow: none;
+      }
+      .sort-bar {
+        display: flex;
+        box-shadow: var(--van-dropdown-menu-shadow);
+      }
+      .sort-bar .sort-icon {
+        min-width: var(--van-action-bar-icon-width);
+        color: var(--van-action-bar-icon-text-color);
+        font-size: var(--van-action-bar-icon-font-size);
+        text-align: center;
+        background: var(--van-action-bar-icon-background);
+        cursor: pointer;
+        font-size: 18px;
+        line-height: var(--van-dropdown-menu-height);
+      }
+      .sort-bar .sort-icon:active {
+        background-color: var(--van-action-bar-icon-active-color);
+      }
+      .product-card {
+        margin: 10px;
+        border-radius: 10px;
+        background-color: var(--van-card-background);
+        overflow: hidden;
+      }
+      .pt-20 {
+        padding-top: 20px;
+      }
+      .product-grid img {
+        aspect-ratio: 1 / 1;
+      }
+      .product-grid .van-grid-item__content {
+        padding: 0;
+      }
     </style>
   </head>
 
@@ -46,7 +81,7 @@
           @focus="toSearch"
         ></van-search>
       </van-sticky>
-      <div style="padding-top: 20px;">
+      <div class="pt-20">
         <van-pull-refresh
           v-model="refreshing"
           @refresh="onRefresh"
@@ -60,7 +95,10 @@
               :key="index"
             >
               <van-divider class="divider">{{ categoryGroup.name }}</van-divider>
-              <van-grid :border="false" clickable>
+              <van-grid
+                :border="false"
+                clickable
+              >
                 <van-grid-item
                   v-for="category in categoryGroup.childrens"
                   :to="`/products?categoryId=${category.id}`"
@@ -100,45 +138,102 @@
         description="暂无商品"
       >
       </van-empty>
-      <van-pull-refresh
-        v-else
-        v-model="refreshing"
-        @refresh="onRefresh"
-      >
-        <van-list
-          v-model:loading="loading"
-          :finished="finished"
-          :immediate-check="false"
-          finished-text="没有更多了"
-          @load="onLoad"
+      <template v-else>
+        <van-sticky :offset-top="100">
+          <div class="sort-bar">
+            <van-dropdown-menu style="flex: 1 1 0;">
+              <van-dropdown-item
+                :model-value="sort"
+                :options="sortOptions"
+                @update:model-value="(value) => changeSort(value)"
+              ></van-dropdown-item>
+            </van-dropdown-menu>
+            <div class="sort-icon" @click="toggleDisplayStyle">
+              <van-icon
+                v-if="displayStyle == 'list'"
+                name="list-switch"
+              ></van-icon>
+              <van-icon
+                v-else
+                name="list-switching"
+              ></van-icon>
+            </div>
+          </div>
+        </van-sticky>
+        <van-pull-refresh
+          v-model="refreshing"
+          @refresh="onRefresh"
         >
-          <van-card
-            style="margin: 10px; border-radius: 10px;"
-            v-for="(product, index) in productList"
-            :key="index"
-            :title="product.title"
-            :desc="product.sub_title"
-            :price="Number(product.price * 0.3).toFixed(2)"
-            :origin-price="Number(product.price).toFixed(2)"
-            :thumb="product.thumb"
-            :tag="product.stock == 0 ? '售罄' : ''"
-            @click="$router.push(`/products/${product.id}`)"
+          <van-list
+            v-model:loading="loading"
+            :finished="finished"
+            :immediate-check="false"
+            finished-text="没有更多了"
+            @load="onLoad"
           >
-            <template #bottom>
-              <div style="color: var(--van-card-desc-color);">已售 {{ product.sales_count }}</div>
+            <template v-if="displayStyle === 'list'">
+              <van-card
+                v-for="(product, index) in productList"
+                :key="index"
+                class="product-card"
+                :title="product.title"
+                :desc="product.sub_title"
+                :price="Number(product.price * 0.3).toFixed(2)"
+                :origin-price="Number(product.price).toFixed(2)"
+                :thumb="product.thumb"
+                :tag="product.stock == 0 ? '售罄' : ''"
+                @click="$router.push(`/products/${product.id}`)"
+              >
+                <template #bottom>
+                  <div style="color: var(--van-card-desc-color);">已售 {{ product.sales_count }}</div>
+                </template>
+                <template #num>
+                  <van-button
+                  type="danger"
+                  size="mini"
+                  icon="cart-o"
+                  round
+                  @click.stop="addCart(product.id)"
+                ></van-button>
+                </template>
+              </van-card>
             </template>
-            <template #num>
-              <van-button
-              type="danger"
-              size="mini"
-              icon="cart-o"
-              round
-              @click.stop="addCart(product.id)"
-            ></van-button>
+            <template v-else>
+              <van-grid
+                :border="false"
+                :column-num="2"
+                :gutter="10"
+                clickable
+                style="margin-top: 10px;"
+                class="product-grid"
+              >
+                <van-grid-item
+                  v-for="(product, index) in productList"
+                  :key="index"
+                  :to="`/products/${product.id}`"
+                >
+                  <van-image
+                    lazy-load
+                    :src="product.thumb"
+                    fit="cover"
+                  ></van-image>
+                  <div style="width: 100%; padding: 10px; box-sizing: border-box;">
+                    <div style="font-size: 16px;">
+                      <van-text-ellipsis :content="product.title"></van-text-ellipsis>
+                    </div>
+                    <div>
+                      <span style="color: var(--van-card-price-color);">
+                        ¥ <span style="font-size: 16px;">{{ Number(product.price * 0.3).toFixed(2) }}</span>
+                      </span>
+                      <span class="van-card__origin-price">{{ Number(product.price).toFixed(2) }}</span>
+                    </div>
+                  </div>
+                </van-grid-item>
+              </van-grid>
             </template>
-          </van-card>
-        </van-list>
-      </van-pull-refresh>
+          </van-list>
+        </van-pull-refresh>
+      </template>
       <product-spec-picker
         v-model:show="showSpecPicker"
         :product="currentRecord.product"
@@ -355,23 +450,15 @@
             编辑
           </span>
         </div>
-        <van-swipe-cell
-          v-for="(cartRecord, index) in cartList"
-          :key="index"
-          :disabled="deleting"
-          style="margin: 10px; border-radius: 10px; background-color: var(--van-card-background); overflow: hidden;"
-        >
-          <div style="display: flex; border-radius: 10px;">
+        <template v-if="deleting">
+          <div
+            v-for="(cartRecord, index) in cartList"
+            :key="index"
+            class="product-card"
+          >
             <van-checkbox
-              v-if="deleting"
               :model-value="isSelectedDeleting(cartRecord.id)"
               @update:model-value="(selected) => toggleDeletingCheck(cartRecord.id, selected)"
-              style="margin-left: 16px;"
-            ></van-checkbox>
-            <van-checkbox
-              v-else
-              :model-value="cartRecord.selected"
-              @update:model-value="(selected) => updateSelected(cartRecord.id, selected)"
               style="margin-left: 16px;"
             ></van-checkbox>
             <van-card
@@ -379,7 +466,6 @@
               :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
               :origin-price="Number(cartRecord.option.price).toFixed(2)"
               :thumb="cartRecord.product.thumb"
-              @click="$router.push(`/products/${cartRecord.product.id}`)"
               lazy-load
               style="flex: 1 1 0; margin: 0;"
             >
@@ -387,71 +473,100 @@
                 <van-tag
                   round
                   style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
-                  @click.stop="editProductSpec(cartRecord)"
                 >
                   {{ cartRecord.option.title }}
-                  <van-icon name="arrow-down"></van-icon>
                 </van-tag>
-              </template>
-              <template #num>
-                <van-stepper
-                  :default-value="cartRecord.quantity"
-                  @change="(value) => updateQuantity(cartRecord.id, value)"
-                  :max="cartRecord.option.stock"
-                  @click.stop
-                ></van-stepper>
               </template>
             </van-card>
           </div>
-          <template #right>
-            <van-button
-              square
-              text="删除"
-              type="danger"
-              @click="deleteCartRecord(cartRecord.id)"
-              style="height: 100%;"
-            ></van-button>
-          </template>
-        </van-swipe-cell>
-        <van-submit-bar
-          v-if="deleting"
-          style="bottom: 50px;"
-        >
-          <template #default>
-            <van-checkbox
-              :model-value="isDeletingCheckAll"
-              @click="toggleDeletingCheckAll"
-            >
-              全选
-            </van-checkbox>
-            <div class="van-submit-bar__text"></div>
-          </template>
-          <template #button>
-            <van-button
-              round
-              style="width: var(--van-submit-bar-button-width); height: var(--van-submit-bar-button-height); font-weight: var(--van-font-bold);"
-              @click="deleteSelectedCartRecord"
-            >
-              删除
-            </van-button>
-          </template>
-        </van-submit-bar>
-        <van-submit-bar
-          v-else
-          :price="$store.getters.totalSelectedPrice * 30"
-          :button-text="`确认(${$store.getters.totalSelectedQuantity})`"
-          style="bottom: 50px;"
-          @submit="$router.push('/orderConfirm')"
-        >
-          <template #default>
-            <van-checkbox
-              :model-value="isCheckAll"
-              @click="toggleCartCheckAll"
-            >
-              全选
-            </van-checkbox>
-          </template>
-        </van-submit-bar>
+          <van-submit-bar style="bottom: 50px;">
+            <template #default>
+              <van-checkbox
+                :model-value="isDeletingCheckAll"
+                @click="toggleDeletingCheckAll"
+              >
+                全选
+              </van-checkbox>
+              <div class="van-submit-bar__text"></div>
+            </template>
+            <template #button>
+              <van-button
+                round
+                style="width: var(--van-submit-bar-button-width); height: var(--van-submit-bar-button-height); font-weight: var(--van-font-bold);"
+                @click="deleteSelectedCartRecord"
+              >
+                删除
+              </van-button>
+            </template>
+          </van-submit-bar>
+        </template>
+        <template v-else>
+          <van-swipe-cell
+            v-for="(cartRecord, index) in cartList"
+            :key="index"
+            class="product-card"
+          >
+            <div style="display: flex; border-radius: 10px;">
+              <van-checkbox
+                :model-value="cartRecord.selected"
+                @update:model-value="(selected) => updateSelected(cartRecord.id, selected)"
+                style="margin-left: 16px;"
+              ></van-checkbox>
+              <van-card
+                :title="cartRecord.product.title"
+                :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
+                :origin-price="Number(cartRecord.option.price).toFixed(2)"
+                :thumb="cartRecord.product.thumb"
+                @click="$router.push(`/products/${cartRecord.product.id}`)"
+                lazy-load
+                style="flex: 1 1 0; margin: 0;"
+              >
+                <template #tags>
+                  <van-tag
+                    round
+                    style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
+                    @click.stop="editProductSpec(cartRecord)"
+                  >
+                    {{ cartRecord.option.title }}
+                    <van-icon name="arrow-down"></van-icon>
+                  </van-tag>
+                </template>
+                <template #num>
+                  <van-stepper
+                    :default-value="cartRecord.quantity"
+                    @change="(value) => updateQuantity(cartRecord.id, value)"
+                    :max="cartRecord.option.stock"
+                    @click.stop
+                  ></van-stepper>
+                </template>
+              </van-card>
+            </div>
+            <template #right>
+              <van-button
+                square
+                text="删除"
+                type="danger"
+                @click="deleteCartRecord(cartRecord.id)"
+                style="height: 100%;"
+              ></van-button>
+            </template>
+          </van-swipe-cell>
+          <van-submit-bar
+            :price="$store.getters.totalSelectedPrice * 30"
+            :button-text="`确认(${$store.getters.totalSelectedQuantity})`"
+            style="bottom: 50px;"
+            @submit="$router.push('/orderConfirm')"
+          >
+            <template #default>
+              <van-checkbox
+                :model-value="isCheckAll"
+                @click="toggleCartCheckAll"
+              >
+                全选
+              </van-checkbox>
+            </template>
+          </van-submit-bar>
+        </template>
         <product-spec-picker
           v-model:show="showSpecPicker"
           :product="editingCartRecord.product"
@@ -466,18 +581,18 @@
 
 
 
-    <!-- 订单确认也 START -->
+    <!-- 订单确认页 START -->
     <template id="orderConfirmPage">
       <div style="padding-bottom: 50px;">
         <van-card
           v-for="(cartRecord, index) in cartList"
           :key="index"
+          class="product-card"
           :title="cartRecord.product.title"
           :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
           :origin-price="Number(cartRecord.option.price).toFixed(2)"
           :thumb="cartRecord.product.thumb"
           lazy-load
-          style="margin: 10px; border-radius: 10px;"
         >
           <template #tags>
             <van-tag
@@ -496,7 +611,7 @@
         </van-submit-bar>
       </div>
     </template>
-    <!-- 订单确认也 END -->
+    <!-- 订单确认页 END -->
 
 
 
@@ -789,6 +904,10 @@
           keyword: {
             type: String,
             default: ''
+          },
+          sort: {
+            type: Number,
+            default: 0
           }
         },
         data() {
@@ -805,14 +924,22 @@
               option_id: 0,
               option: {},
               selectedItemIds: []
-            }
+            },
+            sortOptions: [
+              { text: '综合', value: 0 },
+              { text: '销量', value: 1 },
+              { text: '价格从高到低', value: 2 },
+              { text: '价格从低到高', value: 3 },
+            ],
+            displayStyle: 'grid'
           };
         },
         created() {
           this.$watch(
             () => ({
               categoryId: this.categoryId,
-              keyword: this.keyword
+              keyword: this.keyword,
+              sort: this.sort
             }),
             (newValue, oldValue) => {
               this.refreshing = false;
@@ -828,7 +955,16 @@
         },
         methods: {
           onLoad() {
-            request.get(`/list?title=${this.keyword}&category_ids=${this.categoryId}&group_ids=&page=${this.page}&page_size=20&sort=&by=desc&lat=&lng=&coupon_id=&dycoupon_id=&from_dycoupon_list=&activity_id=&child_shop_id=&type=&recommend=`)
+            const sortMap = {
+              0: {sort: '', by: ''},
+              1: {sort: 'sales_count', by: 'desc'},
+              2: {sort: 'price', by: 'desc'},
+              3: {sort: 'price', by: 'asc'},
+            };
+            const sort = sortMap[this.sort].sort;
+            const by = sortMap[this.sort].by;
+            const url = `/list?title=${this.keyword}&category_ids=${this.categoryId}&group_ids=&page=${this.page}&page_size=20&sort=${sort}&by=${by}&lat=&lng=&coupon_id=&dycoupon_id=&from_dycoupon_list=&activity_id=&child_shop_id=&type=&recommend=`;
+            request.get(url)
               .then(response => {
                 if (this.refreshing) {
                   this.refreshing = false;
@@ -850,7 +986,22 @@
             this.onLoad();
           },
           toSearch() {
-            this.$router.replace(this.keyword ? `/search?keyword=${this.keyword}` : '/search');
+            this.$router.replace({
+              path: '/search',
+              query: {
+                keyword: this.keyword
+              }
+            });
+          },
+          changeSort(sortValue) {
+            this.$router.replace({
+              path: '/products',
+              query: {
+                categoryId: this.categoryId,
+                keyword: this.keyword,
+                sort: sortValue,
+              }
+            });
           },
           addCart(productId) {
             request.get(`/details-new?id=${productId}&activity_id=undefined`)
@@ -886,6 +1037,9 @@
               quantity: this.currentRecord.quantity
             });
             vant.showSuccessToast('加购成功');
+          },
+          toggleDisplayStyle() {
+            this.displayStyle = this.displayStyle === 'list' ? 'grid' : 'list';
           }
         }
       };
@@ -1360,7 +1514,11 @@
             path: '/products',
             name: 'products',
             component: productListPage,
-            props: route => ({ categoryId: Number(route.query.categoryId || 0), keyword: route.query.keyword || '' }),
+            props: route => ({
+              categoryId: Number(route.query.categoryId || 0),
+              keyword: route.query.keyword || '',
+              sort: Number(route.query.sort || 0),
+            }),
             meta: {
               pageTitle: '商品列表',
               pageBack: true,
@@ -1420,22 +1578,22 @@
       // 状态管理
       const store = Vuex.createStore({
         state () {
-          const rawCartList = JSON.parse(localStorage.getItem('rawCartList') || '[]')
+          const rawCartList = JSON.parse(localStorage.getItem('cartList') || '[]');
           return {
             rawCartList: rawCartList
           };
         },
         getters: {
-          cartList(state, getters) {
-            const rawCartList = getters.rawCartList;
+          cartList(state) {
+            const rawCartList = state.rawCartList;
             return _.map(rawCartList, item => {
               const cartRecord = _.cloneDeep(item);
               cartRecord.option = _.find(cartRecord.product.options, option => option.id === cartRecord.option_id);
               return cartRecord;
             });
           },
-          selectedCartList(state, getters) {
-            const rawCartList = getters.rawCartList;
+          selectedCartList(state) {
+            const rawCartList = state.rawCartList;
             return _.map(_.filter(rawCartList, item => item.selected), item => {
               const cartRecord = _.cloneDeep(item);
               cartRecord.option = _.find(cartRecord.product.options, option => option.id === cartRecord.option_id);
