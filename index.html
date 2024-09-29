@@ -18,6 +18,7 @@
         --van-card-background: #fff;
       }
       body {
+        height: 100%;
         font-size: 12px;
         background-color: var(--van-gray-1);
       }
@@ -142,7 +143,7 @@
         v-model:show="showSpecPicker"
         :product="currentRecord.product"
         :default-item-ids="currentRecord.selectedItemIds"
-        :default-amount="currentRecord.amount"
+        :default-quantity="currentRecord.quantity"
         button-text="加入购物车"
         @select="selectProductSpec"
       ></product-spec-picker>
@@ -273,7 +274,7 @@
           >
             <template #title>
               <template v-if="selectedOption">
-                已选择 {{ selectedOption.title }} × {{ amount }}
+                已选择 {{ selectedOption.title }} × {{ quantity }}
               </template>
               <template v-else>
                 请选择
@@ -283,7 +284,7 @@
         </van-cell-group>
       </van-space>
       <van-notify
-        :show="showStock == 0"
+        :show="product.options.length > 0 && showStock == 0"
         type="warning"
         style="top: 46px;"
       >
@@ -295,7 +296,7 @@
           text="购物车"
           replace
           to="/cart"
-          :badge="$store.getters.totalAmount > 0 ? $store.getters.totalAmount : ''"
+          :badge="$store.getters.totalQuantity > 0 ? $store.getters.totalQuantity : ''"
         ></van-action-bar-icon>
         <van-action-bar-button
           type="danger"
@@ -309,7 +310,7 @@
         v-model:show="showSpecPicker"
         :product="product"
         :default-item-ids="selectedItemIds"
-        :default-amount="amount"
+        :default-quantity="quantity"
         button-text="加入购物车"
         @select="selectProductSpec"
       ></product-spec-picker>
@@ -363,14 +364,14 @@
           <div style="display: flex; border-radius: 10px;">
             <van-checkbox
               v-if="deleting"
-              :model-value="isCheckedDeleting(cartRecord.id)"
-              @update:model-value="(checked) => toggleDeletingCheck(cartRecord.id, checked)"
+              :model-value="isSelectedDeleting(cartRecord.id)"
+              @update:model-value="(selected) => toggleDeletingCheck(cartRecord.id, selected)"
               style="margin-left: 16px;"
             ></van-checkbox>
             <van-checkbox
               v-else
               :model-value="cartRecord.selected"
-              @update:model-value="(checked) => updateSelected(cartRecord.id, checked)"
+              @update:model-value="(selected) => updateSelected(cartRecord.id, selected)"
               style="margin-left: 16px;"
             ></van-checkbox>
             <van-card
@@ -394,8 +395,8 @@
               </template>
               <template #num>
                 <van-stepper
-                  :default-value="cartRecord.amount"
-                  @change="(value) => updateAmount(cartRecord.id, value)"
+                  :default-value="cartRecord.quantity"
+                  @change="(value) => updateQuantity(cartRecord.id, value)"
                   :max="cartRecord.option.stock"
                   @click.stop
                 ></van-stepper>
@@ -429,7 +430,7 @@
             <van-button
               round
               style="width: var(--van-submit-bar-button-width); height: var(--van-submit-bar-button-height); font-weight: var(--van-font-bold);"
-              @click="deleteChecked"
+              @click="deleteSelectedCartRecord"
             >
               删除
             </van-button>
@@ -438,7 +439,7 @@
         <van-submit-bar
           v-else
           :price="$store.getters.totalSelectedPrice * 30"
-          :button-text="`确认(${$store.getters.totalSelectedAmount})`"
+          :button-text="`确认(${$store.getters.totalSelectedQuantity})`"
           style="bottom: 50px;"
           @submit="$router.push('/orderConfirm')"
         >
@@ -455,7 +456,7 @@
           v-model:show="showSpecPicker"
           :product="editingCartRecord.product"
           :default-item-ids="editingCartRecord.selectedItemIds"
-          :default-amount="editingCartRecord.amount"
+          :default-quantity="editingCartRecord.quantity"
           button-text="确认"
           @select="selectProductSpec"
         ></product-spec-picker>
@@ -489,7 +490,7 @@
         </van-card>
         <van-submit-bar
           :price="$store.getters.totalSelectedPrice * 30"
-          :button-text="`生成清单(${$store.getters.totalSelectedAmount})`"
+          :button-text="`生成清单(${$store.getters.totalSelectedQuantity})`"
           @submit="exportOrder"
         >
         </van-submit-bar>
@@ -532,7 +533,7 @@
                   库存 {{ filteredOptionStock }} 件
                 </div>
                 <van-stepper
-                  v-model="amount"
+                  v-model="quantity"
                   :max="filteredOptionStock"
                 ></van-stepper>
               </div>
@@ -590,7 +591,11 @@
             @click-left="backPage"
           ></van-nav-bar>
         </van-sticky>
-        <router-view></router-view>
+        <router-view v-slot="{ Component }">
+          <keep-alive>
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </div>
       <van-tabbar
         v-if="$route.meta.showTabBar"
@@ -609,7 +614,7 @@
           to="/cart"
           name="cart"
           icon="cart-o"
-          :badge="$store.getters.totalAmount > 0 ? $store.getters.totalAmount : ''"
+          :badge="$store.getters.totalQuantity > 0 ? $store.getters.totalQuantity : ''"
         >
           购物车
         </van-tabbar-item>
@@ -731,7 +736,10 @@
         mounted() {
           this.$watch(
             () => this.$route,
-            () => {
+            (newValue) => {
+              if (newValue.name !== 'search') {
+                return;
+              }
               this.$refs.search.focus();
               this.currentKeyword = this.keyword;
               this.$nextTick(() => {
@@ -793,7 +801,7 @@
             showSpecPicker: false,
             currentRecord: {
               product: {},
-              amount: 1,
+              quantity: 1,
               option_id: 0,
               option: {},
               selectedItemIds: []
@@ -802,11 +810,14 @@
         },
         created() {
           this.$watch(
-            () => this.$route,
-            () => {
+            () => ({
+              categoryId: this.categoryId,
+              keyword: this.keyword
+            }),
+            (newValue, oldValue) => {
               this.refreshing = false;
-              this.finished = false;
               this.loading = true;
+              this.finished = false;
               this.page = 1;
               this.productList = [];
               this.showSpecPicker = false;
@@ -847,32 +858,32 @@
                 this.showSpecPicker = true;
                 this.currentRecord = {
                   product: util.convertProduct(response.data.data),
-                  amount: 1,
+                  quantity: 1,
                   option_id: 0,
                   option: {},
                   selectedItemIds: []
                 };
               });
           },
-          selectProductSpec(itemIds, amount, confirm) {
+          selectProductSpec(itemIds, quantity, confirm) {
             if (!confirm) {
               return;
             }
             this.currentRecord.selectedItemIds = itemIds;
-            this.currentRecord.amount = amount;
+            this.currentRecord.quantity = quantity;
             if (this.currentRecord.selectedItemIds.length === 0 || this.currentRecord.selectedItemIds.length !== this.currentRecord.product.specs.length) {
               vant.showToast('请选择完整规格');
               return;
             }
             const selectedOption = util.getOptionByItemIds(this.currentRecord.product.options, this.currentRecord.selectedItemIds);
-            if (this.currentRecord.amount > selectedOption.stock) {
+            if (this.currentRecord.quantity > selectedOption.stock) {
               vant.showToast('库存不足');
               return;
             }
             this.$store.dispatch('addCartRecord', {
               product: this.currentRecord.product,
               option_id: selectedOption.id,
-              amount: this.currentRecord.amount
+              quantity: this.currentRecord.quantity
             });
             vant.showSuccessToast('加购成功');
           }
@@ -903,16 +914,28 @@
               specs: [],
               options: []
             },
-            amount: 1,
+            quantity: 1,
             selectedItemIds: [],
             showSpecPicker: false
           };
         },
         created() {
           this.$watch(
-            () => this.$route,
-            () => {
-              this.amount = 1;
+            () => ({
+              productId: this.productId
+            }),
+            (newValue) => {
+              this.product = {
+                id: 0,
+                title: '',
+                price: [0],
+                min_price: '',
+                max_price: '',
+                thumbs: [],
+                specs: [],
+                options: []
+              },
+              this.quantity = 1;
               this.selectedItemIds = [];
               this.showSpecPicker = false;
               this.getProduct();
@@ -950,14 +973,14 @@
               closeable: true
             });
           },
-          selectProductSpec(itemIds, amount, confirm) {
+          selectProductSpec(itemIds, quantity, confirm) {
             this.selectedItemIds = itemIds;
-            this.amount = amount;
+            this.quantity = quantity;
             if (confirm) {
               this.$store.dispatch('addCartRecord', {
                 product: this.product,
                 option_id: this.selectedOption.id,
-                amount: this.amount
+                quantity: this.quantity
               });
               vant.showSuccessToast('加购成功');
             }
@@ -977,7 +1000,7 @@
             showSpecPicker: false,
             editingCartRecord: {
               product: {},
-              amount: 1,
+              quantity: 1,
               option_id: 0,
               option: {},
               selectedItemIds: []
@@ -986,12 +1009,7 @@
         },
         computed: {
           cartList() {
-            const rawCartList = this.$store.state.cartList;
-            return _.map(rawCartList, item => {
-              const cartRecord = _.cloneDeep(item);
-              cartRecord.option = _.find(cartRecord.product.options, option => option.id === cartRecord.option_id);
-              return cartRecord;
-            });
+            return this.$store.getters.cartList;
           },
           isCheckAll() {
             return _.every(this.cartList, item => item.selected);
@@ -1008,16 +1026,16 @@
           quitDeleting() {
             this.deleting = false;
           },
-          isCheckedDeleting(id) {
+          isSelectedDeleting(id) {
             return _.includes(this.deletingIds, id);
           },
           toggleDeletingCheckAll() {
             this.deletingIds = this.isDeletingCheckAll ? [] : _.map(this.cartList, 'id');
           },
-          toggleDeletingCheck(id, checked) {
-            this.deletingIds = checked ? _.concat(this.deletingIds, id) : _.without(this.deletingIds, id);
+          toggleDeletingCheck(id, selected) {
+            this.deletingIds = selected ? _.concat(this.deletingIds, id) : _.without(this.deletingIds, id);
           },
-          deleteChecked() {
+          deleteSelectedCartRecord() {
             if (this.deletingIds.length === 0) {
               return;
             }
@@ -1025,16 +1043,16 @@
               this.$store.dispatch('deleteCartRecord', id);
             });
           },
-          toggleCartCheckAll() {
-            this.$store.dispatch('toggleCartCheckAll', !this.isCheckAll);
-          },
           deleteCartRecord(id) {
             this.$store.dispatch('deleteCartRecord', id);
           },
-          updateAmount(id, amount) {
+          toggleCartCheckAll() {
+            this.$store.dispatch('toggleCartCheckAll', !this.isCheckAll);
+          },
+          updateQuantity(id, quantity) {
             this.$store.dispatch('updateCartRecord', {
               id: id,
-              amount: amount,
+              quantity: quantity,
             });
           },
           updateSelected(id, selected) {
@@ -1048,24 +1066,24 @@
             this.editingCartRecord.selectedItemIds = cartRecord.option.item_ids;
             this.showSpecPicker = true;
           },
-          selectProductSpec(selectedItemIds, amount, confirm) {
+          selectProductSpec(selectedItemIds, quantity, confirm) {
             if (!confirm) {
               return;
             }
             this.editingCartRecord.selectedItemIds = selectedItemIds;
-            this.editingCartRecord.amount = amount;
+            this.editingCartRecord.quantity = quantity;
             if (this.editingCartRecord.selectedItemIds.length === 0 || this.editingCartRecord.selectedItemIds.length !== this.editingCartRecord.product.specs.length) {
               vant.showToast('请选择完整规格');
               return;
             }
             const selectedOption = util.getOptionByItemIds(this.editingCartRecord.product.options, this.editingCartRecord.selectedItemIds);
-            if (this.editingCartRecord.amount > selectedOption.stock) {
+            if (this.editingCartRecord.quantity > selectedOption.stock) {
               vant.showToast('库存不足');
               return;
             }
             this.$store.dispatch('updateCartRecord', {
               id: this.editingCartRecord.id,
-              amount: this.editingCartRecord.amount,
+              quantity: this.editingCartRecord.quantity,
               option_id: selectedOption.id,
             });
             vant.showSuccessToast('修改成功');
@@ -1080,12 +1098,7 @@
         template: '#orderConfirmPage',
         computed: {
           cartList() {
-            const rawCartList = this.$store.state.cartList;
-            return _.map(_.filter(rawCartList, item => item.selected), item => {
-              const cartRecord = _.cloneDeep(item);
-              cartRecord.option = _.find(cartRecord.product.options, option => option.id === cartRecord.option_id);
-              return cartRecord;
-            });
+            return this.$store.getters.selectedCartList;
           }
         },
         methods: {
@@ -1127,7 +1140,7 @@
               },
               {
                 header: '数量',
-                key: 'amount',
+                key: 'quantity',
                 width: 10,
               },
               {
@@ -1142,8 +1155,8 @@
               },
             ];
             const selectedCartList = _.filter(this.cartList, cartRecord => cartRecord.selected);
-            const totalSelectedAmount = _.sum(_.map(selectedCartList, item => Number(item.amount)));
-            const totalSelectedPrice = _.sum(_.map(selectedCartList, cartRecord => Number(cartRecord.option.price) * Number(cartRecord.amount)));
+            const totalSelectedQuantity = _.sum(_.map(selectedCartList, item => Number(item.quantity)));
+            const totalSelectedPrice = _.sum(_.map(selectedCartList, cartRecord => Number(cartRecord.option.price) * Number(cartRecord.quantity)));
             _.forEach(selectedCartList, cartRecord => {
               const row = worksheet.addRow([
                 '',
@@ -1151,9 +1164,9 @@
                 cartRecord.option.title,
                 Number(cartRecord.option.price).toFixed(2),
                 Number(cartRecord.option.price * 0.3).toFixed(2),
-                cartRecord.amount,
-                Number(cartRecord.option.price * cartRecord.amount).toFixed(2),
-                Number(cartRecord.option.price * 0.3 * cartRecord.amount).toFixed(2)
+                cartRecord.quantity,
+                Number(cartRecord.option.price * cartRecord.quantity).toFixed(2),
+                Number(cartRecord.option.price * 0.3 * cartRecord.quantity).toFixed(2)
               ]);
               row.height = 200;
             });
@@ -1163,7 +1176,7 @@
               '',
               '',
               '',
-              totalSelectedAmount,
+              totalSelectedQuantity,
               Number(totalSelectedPrice).toFixed(2),
               Number(totalSelectedPrice * 0.3).toFixed(2),
             ]);
@@ -1205,7 +1218,7 @@
             type: Array,
             default: []
           },
-          defaultAmount: {
+          defaultQuantity: {
             type: Number,
             default: 0
           },
@@ -1218,7 +1231,7 @@
         data() {
           return {
             selectedItemIds: [],
-            amount: 1
+            quantity: 1
           }
         },
         watch: {
@@ -1228,9 +1241,9 @@
             },
             immediate: true
           },
-          defaultAmount: {
-            handler(amount) {
-              this.amount = amount;
+          defaultQuantity: {
+            handler(quantity) {
+              this.quantity = quantity;
             },
             immediate: true
           }
@@ -1238,7 +1251,7 @@
         computed: {
           allItems() {
             return _.flatten(_.map(this.product.specs, spec => {
-              return _.map(spec.items, item => {
+              return _.map(_.cloneDeep(spec.items), item => {
                 item.spec_id = spec.id;
                 return item;
               });
@@ -1288,7 +1301,7 @@
             }
           },
           onClose() {
-            this.$emit('select', this.selectedItemIds, this.amount, false);
+            this.$emit('select', this.selectedItemIds, this.quantity, false);
             this.$emit('update:show', false);
           },
           onConfirm() {
@@ -1297,11 +1310,11 @@
               return;
             }
             const selectedOption = util.getOptionByItemIds(this.product.options, this.selectedItemIds);
-            if (this.amount > selectedOption.stock) {
+            if (this.quantity > selectedOption.stock) {
               vant.showToast('库存不足');
               return;
             }
-            this.$emit('select', this.selectedItemIds, this.amount, true);
+            this.$emit('select', this.selectedItemIds, this.quantity, true);
             this.$emit('update:show', false);
           }
         }
@@ -1322,6 +1335,7 @@
         routes: [
           {
             path: '/',
+            name: 'home',
             component: categoryListPage,
             meta: {
               pageTitle: '首页',
@@ -1332,6 +1346,7 @@
           },
           {
             path: '/search',
+            name: 'search',
             component: searchPage,
             props: route => ({ keyword: route.query.keyword || '' }),
             meta: {
@@ -1343,6 +1358,7 @@
           },
           {
             path: '/products',
+            name: 'products',
             component: productListPage,
             props: route => ({ categoryId: Number(route.query.categoryId || 0), keyword: route.query.keyword || '' }),
             meta: {
@@ -1354,6 +1370,7 @@
           },
           {
             path: '/products/:productId',
+            name: 'product',
             component: productDetailPage,
             props: route => ({ productId: Number(route.params.productId) }),
             meta: {
@@ -1365,6 +1382,7 @@
           },
           {
             path: '/cart',
+            name: 'cart',
             component: cartListPage,
             meta: {
               pageTitle: '购物车',
@@ -1375,12 +1393,18 @@
           },
           {
             path: '/orderConfirm',
+            name: 'orderConfirm',
             component: orderConfirmPage,
             meta: {
               pageTitle: '确认订单',
               pageBack: true,
               showTabBar: false,
               showBackTop: false,
+            },
+            beforeEnter() {
+              if (!store.getters.totalSelectedQuantity) {
+                return { path: '/cart' };
+              }
             }
           },
         ]
@@ -1396,92 +1420,102 @@
       // 状态管理
       const store = Vuex.createStore({
         state () {
-          const cartList = JSON.parse(localStorage.getItem('cartList') || '[]')
+          const rawCartList = JSON.parse(localStorage.getItem('rawCartList') || '[]')
           return {
-            cartList: cartList
+            rawCartList: rawCartList
           };
         },
         getters: {
-          totalAmount(state) {
-            return _.sum(_.map(state.cartList, item => Number(item.amount)));
+          cartList(state, getters) {
+            const rawCartList = getters.rawCartList;
+            return _.map(rawCartList, item => {
+              const cartRecord = _.cloneDeep(item);
+              cartRecord.option = _.find(cartRecord.product.options, option => option.id === cartRecord.option_id);
+              return cartRecord;
+            });
           },
-          totalSelectedAmount(state) {
-            return _.sum(_.map(state.cartList, item => item.selected ? Number(item.amount) : 0));
+          selectedCartList(state, getters) {
+            const rawCartList = getters.rawCartList;
+            return _.map(_.filter(rawCartList, item => item.selected), item => {
+              const cartRecord = _.cloneDeep(item);
+              cartRecord.option = _.find(cartRecord.product.options, option => option.id === cartRecord.option_id);
+              return cartRecord;
+            });
+          },
+          totalQuantity(state) {
+            return _.sum(_.map(state.rawCartList, item => Number(item.quantity)));
+          },
+          totalSelectedQuantity(state) {
+            return _.sum(_.map(state.rawCartList, item => item.selected ? Number(item.quantity) : 0));
           },
           totalSelectedPrice(state) {
-            return _.sum(_.map(state.cartList, item => {
+            return _.sum(_.map(state.rawCartList, item => {
               if (!item.selected) {
                 return 0;
               }
               const option = _.find(item.product.options, option => option.id === item.option_id);
-              return Number(item.amount) * Number(option.price);
+              return Number(item.quantity) * Number(option.price);
             }));
           },
         },
         mutations: {
           toggleCartCheckAll(state, selected) {
-            state.cartList = _.map(state.cartList, item => {
+            state.rawCartList = _.map(state.rawCartList, item => {
               item.selected = selected;
               return item;
             });
           },
           addCartRecord(state, addData) {
-            if (!addData.amount) {
+            if (!addData.quantity) {
               return;
             }
-            const cartRecord = state.cartList.find(item => item.option_id === addData.option_id);
+            const cartRecord = state.rawCartList.find(item => item.option_id === addData.option_id);
             if (cartRecord) {
               if (typeof addData.product !== 'undefined') {
                 cartRecord.product = addData.product;
               }
-              cartRecord.amount += addData.amount;
+              cartRecord.quantity += addData.quantity;
             } else {
               addData.id = generateUUID();
               addData.selected = true;
-              state.cartList.push(addData);
+              state.rawCartList.push(addData);
             }
           },
           deleteCartRecord(state, id) {
-            state.cartList = _.filter(state.cartList, item => item.id != id);
+            state.rawCartList = _.filter(state.rawCartList, item => item.id != id);
           },
           updateCartRecord(state, updateData) {
             if (!updateData.id) {
               return;
             }
-            const cartRecord = state.cartList.find(item => item.id === updateData.id);
+            const cartRecord = state.rawCartList.find(item => item.id === updateData.id);
             if (!cartRecord) {
               return;
             }
-            if (typeof updateData.product !== 'undefined') {
-              cartRecord.product = updateData.product;
-            }
-            if (typeof updateData.option_id !== 'undefined') {
-              cartRecord.option_id = updateData.option_id;
-            }
-            if (typeof updateData.amount !== 'undefined') {
-              cartRecord.amount = updateData.amount;
-            }
-            if (typeof updateData.selected !== 'undefined') {
-              cartRecord.selected = updateData.selected;
-            }
+            const fieldKeys = ['product', 'option_id', 'quantity', 'selected'];
+            _.forEach(fieldKeys, fieldKey => {
+              if (typeof updateData[fieldKey] !== 'undefined') {
+                cartRecord[fieldKey] = updateData[fieldKey];
+              }
+            });
           },
         },
         actions: {
           toggleCartCheckAll({ commit }, selected) {
             commit('toggleCartCheckAll', selected);
-            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+            localStorage.setItem('cartList', JSON.stringify(this.state.rawCartList));
           },
           addCartRecord({ commit }, addData) {
             commit('addCartRecord', addData);
-            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+            localStorage.setItem('cartList', JSON.stringify(this.state.rawCartList));
           },
           deleteCartRecord({ commit }, id) {
             commit('deleteCartRecord', id);
-            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+            localStorage.setItem('cartList', JSON.stringify(this.state.rawCartList));
           },
           updateCartRecord({ commit }, updateData) {
             commit('updateCartRecord', updateData);
-            localStorage.setItem('cartList', JSON.stringify(this.state.cartList));
+            localStorage.setItem('cartList', JSON.stringify(this.state.rawCartList));
           },
         }
       });
