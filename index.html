@@ -39,7 +39,6 @@
       }
       .sort-bar {
         display: flex;
-        box-shadow: var(--van-dropdown-menu-shadow);
       }
       .sort-bar .sort-icon {
         min-width: var(--van-action-bar-icon-width);
@@ -930,9 +929,13 @@
               { text: '销量', value: 1 },
               { text: '价格从高到低', value: 2 },
               { text: '价格从低到高', value: 3 },
-            ],
-            displayStyle: 'grid'
+            ]
           };
+        },
+        computed: {
+          displayStyle() {
+            return this.$store.state.displayStyle;
+          }
         },
         created() {
           this.$watch(
@@ -1039,7 +1042,7 @@
             vant.showSuccessToast('加购成功');
           },
           toggleDisplayStyle() {
-            this.displayStyle = this.displayStyle === 'list' ? 'grid' : 'list';
+            this.$store.dispatch('toggleDisplayStyle');
           }
         }
       };
@@ -1579,8 +1582,10 @@
       const store = Vuex.createStore({
         state () {
           const rawCartList = JSON.parse(localStorage.getItem('cartList') || '[]');
+          const displayStyle = localStorage.getItem('displayStyle') == 'grid' ? 'grid' : 'list';
           return {
-            rawCartList: rawCartList
+            rawCartList: rawCartList,
+            displayStyle: displayStyle,
           };
         },
         getters: {
@@ -1657,6 +1662,9 @@
               }
             });
           },
+          toggleDisplayStyle(state) {
+            state.displayStyle = state.displayStyle === 'list' ? 'grid' : 'list';
+          }
         },
         actions: {
           toggleCartCheckAll({ commit }, selected) {
@@ -1675,6 +1683,10 @@
             commit('updateCartRecord', updateData);
             localStorage.setItem('cartList', JSON.stringify(this.state.rawCartList));
           },
+          toggleDisplayStyle({ commit }) {
+            commit('toggleDisplayStyle');
+            localStorage.setItem('displayStyle', this.state.displayStyle);
+          }
         }
       });
 
