@@ -64,9 +64,20 @@
       }
       .product-grid img {
         aspect-ratio: 1 / 1;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
       }
       .product-grid .van-grid-item__content {
         padding: 0;
+        border-radius: 10px;
+      }
+      .history-checkbox {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+      }
+      .history-checkbox :not(.van-checkbox__icon--checked) .van-icon {
+        background-color: #fff;
       }
     </style>
   </head>
@@ -188,12 +199,12 @@
                 </template>
                 <template #num>
                   <van-button
-                  type="danger"
-                  size="mini"
-                  icon="cart-o"
-                  round
-                  @click.stop="addCart(product.id)"
-                ></van-button>
+                    type="danger"
+                    size="mini"
+                    icon="cart-o"
+                    round
+                    @click.stop="addCart(product.id)"
+                  ></van-button>
                 </template>
               </van-card>
             </template>
@@ -226,6 +237,18 @@
                       </span>
                       <span class="van-card__origin-price">{{ Number(product.price).toFixed(2) }}</span>
                     </div>
+                    <van-row>
+                      <van-col span="12" style="color: var(--van-card-desc-color); line-height: 24px;">已售 {{ product.sales_count }}</van-col>
+                      <van-col span="12" style="text-align: right;">
+                        <van-button
+                          type="danger"
+                          size="mini"
+                          icon="cart-o"
+                          round
+                          @click.stop="addCart(product.id)"
+                        ></van-button>
+                      </van-col>
+                    </van-row>
                   </div>
                 </van-grid-item>
               </van-grid>
@@ -454,6 +477,7 @@
             v-for="(cartRecord, index) in cartList"
             :key="index"
             class="product-card"
+            style="display: flex;"
           >
             <van-checkbox
               :model-value="isSelectedDeleting(cartRecord.id)"
@@ -535,6 +559,7 @@
                     :default-value="cartRecord.quantity"
                     @change="(value) => updateQuantity(cartRecord.id, value)"
                     :max="cartRecord.option.stock"
+                    button-size="20px"
                     @click.stop
                   ></van-stepper>
                 </template>
@@ -577,6 +602,94 @@
       </div>
     </template>
     <!-- 购物车页 END -->
+
+
+
+    <!-- 浏览历史页 START -->
+    <template id="viewHistoryListPage">
+      <van-empty
+        v-if="viewHistoryList.length == 0"
+        image="search"
+        description="暂无浏览历史"
+      >
+      </van-empty>
+      <template v-else>
+        <div style="text-align: right; margin: 10px;">
+          <span
+            v-if="deleting"
+            @click="quitDeleting"
+          >
+            完成
+          </span>
+          <span
+            v-else
+            @click="enterDeleting"
+          >
+            编辑
+          </span>
+        </div>
+        <van-grid
+          :border="false"
+          :column-num="3"
+          :gutter="10"
+          clickable
+          style="margin-top: 10px;"
+          class="product-grid"
+        >
+          <van-grid-item
+            v-for="(product, index) in viewHistoryList"
+            :key="index"
+            :to="`/products/${product.id}`"
+            style="position: relative;"
+          >
+            <van-image
+              lazy-load
+              :src="product.thumb"
+              fit="cover"
+            ></van-image>
+            <div style="width: 100%; padding: 10px; box-sizing: border-box;">
+              <div>
+                <span style="color: var(--van-card-price-color);">
+                  ¥ <span style="font-size: 16px;">{{ Number(product.price * 0.3).toFixed(2) }}</span>
+                </span>
+                <span class="van-card__origin-price">{{ Number(product.price).toFixed(2) }}</span>
+              </div>
+            </div>
+            <van-checkbox
+              v-if="deleting"
+              :model-value="isSelectedDeleting(product.id)"
+              @update:model-value="(selected) => toggleDeletingCheck(product.id, selected)"
+              class="history-checkbox"
+              @click.stop
+            ></van-checkbox>
+          </van-grid-item>
+        </van-grid>
+        <van-submit-bar
+          v-if="deleting"
+          style="bottom: 50px;"
+        >
+          <template #default>
+            <van-checkbox
+              :model-value="isDeletingCheckAll"
+              @click="toggleDeletingCheckAll"
+            >
+              全选
+            </van-checkbox>
+            <div class="van-submit-bar__text"></div>
+          </template>
+          <template #button>
+            <van-button
+              round
+              style="width: var(--van-submit-bar-button-width); height: var(--van-submit-bar-button-height); font-weight: var(--van-font-bold);"
+              @click="deleteSelectedViewHistroy"
+            >
+              删除
+            </van-button>
+          </template>
+        </van-submit-bar>
+      </template>
+    </template>
+    <!-- 浏览历史页 END -->
 
 
 
@@ -706,8 +819,8 @@
           ></van-nav-bar>
         </van-sticky>
         <router-view v-slot="{ Component }">
-          <keep-alive>
-            <component :is="Component" />
+          <keep-alive exclude="viewHistoryListPage">
+            <component :is="Component"></component>
           </keep-alive>
         </router-view>
       </div>
@@ -731,6 +844,14 @@
           :badge="$store.getters.totalQuantity > 0 ? $store.getters.totalQuantity : ''"
         >
           购物车
+        </van-tabbar-item>
+        <van-tabbar-item
+          replace
+          to="/history"
+          name="history"
+          icon="browsing-history-o"
+        >
+          浏览历史
         </van-tabbar-item>
       </van-tabbar>
       <van-back-top
@@ -1064,10 +1185,10 @@
             product: {
               id: 0,
               title: '',
-              price: [0],
-              min_price: '',
-              max_price: '',
+              sub_title: '',
+              thumb: '',
               thumbs: [],
+              sales_count: 0,
               specs: [],
               options: []
             },
@@ -1085,10 +1206,10 @@
               this.product = {
                 id: 0,
                 title: '',
-                price: [0],
-                min_price: '',
-                max_price: '',
+                sub_title: '',
+                thumb: '',
                 thumbs: [],
+                sales_count: 0,
                 specs: [],
                 options: []
               },
@@ -1121,6 +1242,11 @@
               .then(response => {
                 this.loading = false;
                 this.product = util.convertProduct(response.data.data);
+                this.$store.dispatch('addViewHistory', {
+                  id: this.product.id,
+                  thumb: this.product.thumb,
+                  price: _.min(_.map(this.product.options, 'price'))
+                });
               });
           },
           previewImage(startPosition) {
@@ -1174,6 +1300,17 @@
           isDeletingCheckAll() {
             return _.isEqual(_.sortBy(this.deletingIds), _.sortBy(_.map(this.cartList, 'id')));
           }
+        },
+        mounted() {
+          this.$watch(
+            () => this.$route,
+            (newValue) => {
+              if (newValue.name !== 'cart') {
+                return;
+              }
+              this.quitDeleting();
+            }
+          );
         },
         methods: {
           enterDeleting() {
@@ -1244,6 +1381,65 @@
               option_id: selectedOption.id,
             });
             vant.showSuccessToast('修改成功');
+          }
+        }
+      };
+
+
+
+      // 浏览历史页
+      const viewHistoryListPage = {
+        template: '#viewHistoryListPage',
+        name: 'viewHistoryListPage',
+        data() {
+          return {
+            deleting: false,
+            deletingIds: [],
+          };
+        },
+        computed: {
+          viewHistoryList() {
+            return this.$store.state.viewHistoryList;
+          },
+          isDeletingCheckAll() {
+            return _.isEqual(_.sortBy(this.deletingIds), _.sortBy(_.map(this.viewHistoryList, 'id')));
+          }
+        },
+        mounted() {
+          this.$watch(
+            () => this.$route,
+            (newValue) => {
+              if (newValue.name !== 'history') {
+                return;
+              }
+              this.quitDeleting();
+            }
+          );
+        },
+        methods: {
+          enterDeleting() {
+            this.deleting = true;
+            this.deletingIds = [];
+          },
+          quitDeleting() {
+            this.deleting = false;
+          },
+          isSelectedDeleting(id) {
+            return _.includes(this.deletingIds, id);
+          },
+          toggleDeletingCheckAll() {
+            this.deletingIds = this.isDeletingCheckAll ? [] : _.map(this.viewHistoryList, 'id');
+          },
+          toggleDeletingCheck(id, selected) {
+            this.deletingIds = selected ? _.concat(this.deletingIds, id) : _.without(this.deletingIds, id);
+          },
+          deleteSelectedViewHistroy() {
+            if (this.deletingIds.length === 0) {
+              return;
+            }
+            _.forEach(this.deletingIds, id => {
+              this.$store.dispatch('deleteViewHistroy', id);
+            });
           }
         }
       };
@@ -1553,6 +1749,17 @@
             }
           },
           {
+            path: '/history',
+            name: 'history',
+            component: viewHistoryListPage,
+            meta: {
+              pageTitle: '浏览历史',
+              pageBack: false,
+              showTabBar: true,
+              showBackTop: false,
+            }
+          },
+          {
             path: '/orderConfirm',
             name: 'orderConfirm',
             component: orderConfirmPage,
@@ -1582,9 +1789,11 @@
       const store = Vuex.createStore({
         state () {
           const rawCartList = JSON.parse(localStorage.getItem('cartList') || '[]');
+          const viewHistoryList = JSON.parse(localStorage.getItem('viewHistoryList') || '[]');
           const displayStyle = localStorage.getItem('displayStyle') == 'grid' ? 'grid' : 'list';
           return {
             rawCartList: rawCartList,
+            viewHistoryList: viewHistoryList,
             displayStyle: displayStyle,
           };
         },
@@ -1662,6 +1871,12 @@
               }
             });
           },
+          addViewHistory(state, viewHistory) {
+            state.viewHistoryList = _.take(_.concat([viewHistory], _.filter(state.viewHistoryList, (item => item.id !== viewHistory.id))), 100);
+          },
+          deleteViewHistroy(state, id) {
+            state.viewHistoryList = _.filter(state.viewHistoryList, item => item.id != id);
+          },
           toggleDisplayStyle(state) {
             state.displayStyle = state.displayStyle === 'list' ? 'grid' : 'list';
           }
@@ -1682,6 +1897,14 @@
           updateCartRecord({ commit }, updateData) {
             commit('updateCartRecord', updateData);
             localStorage.setItem('cartList', JSON.stringify(this.state.rawCartList));
+          },
+          addViewHistory({ commit }, viewHistory) {
+            commit('addViewHistory', viewHistory);
+            localStorage.setItem('viewHistoryList', JSON.stringify(this.state.viewHistoryList));
+          },
+          deleteViewHistroy({ commit }, id) {
+            commit('deleteViewHistroy', id);
+            localStorage.setItem('viewHistoryList', JSON.stringify(this.state.viewHistoryList));
           },
           toggleDisplayStyle({ commit }) {
             commit('toggleDisplayStyle');
