@@ -62,6 +62,9 @@
       .pt-20 {
         padding-top: 20px;
       }
+      .mt-10 {
+        margin-top: 10px;
+      }
       .product-grid img {
         aspect-ratio: 1 / 1;
         border-top-left-radius: 10px;
@@ -70,11 +73,12 @@
       .product-grid .van-grid-item__content {
         padding: 0;
         border-radius: 10px;
+        position: relative;
       }
       .history-checkbox {
         position: absolute;
-        top: 15px;
-        right: 15px;
+        top: 10px;
+        right: 10px;
       }
       .history-checkbox :not(.van-checkbox__icon--checked) .van-icon {
         background-color: #fff;
@@ -213,9 +217,7 @@
                 :border="false"
                 :column-num="2"
                 :gutter="10"
-                clickable
-                style="margin-top: 10px;"
-                class="product-grid"
+                class="product-grid mt-10"
               >
                 <van-grid-item
                   v-for="(product, index) in productList"
@@ -613,7 +615,10 @@
         description="暂无浏览历史"
       >
       </van-empty>
-      <template v-else>
+      <div
+        v-else
+        :style="deleting ? { paddingBottom: '50px' } : {}"
+      >
         <div style="text-align: right; margin: 10px;">
           <span
             v-if="deleting"
@@ -632,14 +637,13 @@
           :border="false"
           :column-num="3"
           :gutter="10"
-          clickable
-          style="margin-top: 10px;"
-          class="product-grid"
+          :clickable="!deleting"
+          class="product-grid mt-10"
         >
           <van-grid-item
             v-for="(product, index) in viewHistoryList"
             :key="index"
-            :to="`/products/${product.id}`"
+            :to="deleting ? '' : `/products/${product.id}`"
             style="position: relative;"
           >
             <van-image
@@ -687,7 +691,7 @@
             </van-button>
           </template>
         </van-submit-bar>
-      </template>
+      </div>
     </template>
     <!-- 浏览历史页 END -->
 
@@ -1245,7 +1249,8 @@
                 this.$store.dispatch('addViewHistory', {
                   id: this.product.id,
                   thumb: this.product.thumb,
-                  price: _.min(_.map(this.product.options, 'price'))
+                  price: _.min(_.map(this.product.options, 'price')),
+                  view_time: Date.now()
                 });
               });
           },
