@@ -5,7 +5,7 @@ import { useStore } from 'vuex';
 import { showSuccessToast } from 'vant';
 import ProductSpecPicker from '../components/ProductSpecPicker.vue';
 import { convertProduct, getOptionByItemIds } from '../util.js';
-import { fetchProducts } from '../api.js';
+import { fetchProduct, fetchProducts } from '../api.js';
 
 const props = defineProps({
   categoryId: {
@@ -93,18 +93,16 @@ function changeSort(sortValue) {
     }
   });
 }
-function addCart(productId) {
-  request.get(`/details-new?id=${productId}&activity_id=undefined`)
-    .then(response => {
-      showSpecPicker.value = true;
-      currentRecord.value = {
-        product: convertProduct(response.data.data),
-        quantity: 1,
-        option_id: 0,
-        option: {},
-        selectedItemIds: []
-      };
-    });
+async function addCart(productId) {
+  const response =  await fetchProduct(productId);
+  showSpecPicker.value = true;
+  currentRecord.value = {
+    product: convertProduct(response.data.data),
+    quantity: 1,
+    option_id: 0,
+    option: {},
+    selectedItemIds: []
+  };
 }
 function selectProductSpec(inputItemIds, inputQuantity, confirm) {
   if (!confirm) {
