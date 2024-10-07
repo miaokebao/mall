@@ -1,0 +1,31 @@
+:root:root {
+  --van-card-price-color: var(--van-submit-bar-price-color);
+  --van-card-background: #fff;
+}
+body {
+  height: 100%;
+  font-size: 12px;
+  background-color: var(--van-gray-1);
+}
+.product-card {
+  margin: 10px;
+  border-radius: 10px;
+  background-color: var(--van-card-background);
+  overflow: hidden;
+}
+.product-grid img {
+  aspect-ratio: 1 / 1;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+.product-grid .van-grid-item__content {
+  padding: 0;
+  border-radius: 10px;
+  position: relative;
+}
+.pt-20 {
+  padding-top: 20px;
+}
+.mt-10 {
+  margin-top: 10px;
+}
