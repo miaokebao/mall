@@ -4,9 +4,18 @@ export function fetchCategoryList() {
   return request.get('/category/list?child_shop_id=');
 }
 
+const productMap = {};
 export function fetchProduct(productId) {
-  
-  return request.get(`/details-new?id=${productId}`);
+  if (productMap[productId]) {
+    return new Promise(resolve => {
+      resolve(productMap[productId]);
+    });
+  }
+  return request.get(`/details-new?id=${productId}`)
+    .then(res => {
+      productMap[productId] = res;
+      return res;
+    });
 }
 
 export function fetchProductList(categoryId, keyword, page, sort, by) {

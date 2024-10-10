@@ -163,7 +163,7 @@ function selectProductSpec(inputItemIds, inputQuantity, confirm) {
               :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
               :origin-price="Number(cartRecord.option.price).toFixed(2)"
               :thumb="cartRecord.product.thumb"
-              :num="orderItem.quantity"
+              :num="cartRecord.quantity"
               lazy-load
               style="flex: 1 1 0; margin: 0;"
             >
