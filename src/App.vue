@@ -59,11 +59,11 @@ function backPage() {
     </VanTabbarItem>
     <VanTabbarItem
       replace
-      to="/history"
-      name="history"
-      icon="browsing-history-o"
+      to="/more"
+      name="more"
+      icon="more-o"
     >
-      浏览历史
+      更多
     </VanTabbarItem>
   </VanTabbar>
   <VanBackTop

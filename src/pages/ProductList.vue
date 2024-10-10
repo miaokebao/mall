@@ -5,7 +5,7 @@ import { useStore } from 'vuex';
 import { showSuccessToast } from 'vant';
 import ProductSpecPicker from '../components/ProductSpecPicker.vue';
 import { convertProduct, getOptionByItemIds } from '../util.js';
-import { fetchProduct, fetchProducts } from '../api.js';
+import { fetchProduct, fetchProductList } from '../api.js';
 
 const props = defineProps({
   categoryId: {
@@ -44,7 +44,7 @@ const sortOptions = ref([
   { text: '价格从低到高', value: 3 },
 ]);
 const displayStyle = computed(() => {
-  return store.state.displayStyle;
+  return store.state.displayStyle.displayStyle;
 });
 
 async function onLoad() {
@@ -56,7 +56,7 @@ async function onLoad() {
   };
   const sort = sortMap[props.sort].sort;
   const by = sortMap[props.sort].by;
-  const response = await fetchProducts(props.categoryId, props.keyword, page.value, sort, by);
+  const response = await fetchProductList(props.categoryId, props.keyword, page.value, sort, by);
   if (refreshing.value) {
     refreshing.value = false;
     productList.value = [];
@@ -150,133 +150,140 @@ watch(
 </script>
 
 <template>
-<VanSticky :offset-top="46">
-  <VanSearch
-    :model-value="keyword"
-    placeholder="请输入搜索内容"
-    @focus="toSearch"
-  />
-</VanSticky>
-<VanEmpty
-  v-if="!loading && finished && productList.length == 0"
-  image="search"
-  description="暂无商品"
->
-</VanEmpty>
-<template v-else>
-  <VanSticky :offset-top="100">
-    <div class="sort-bar">
-      <VanDropdownMenu style="flex: 1 1 0;">
-        <VanDropdownItem
-          :model-value="sort"
-          :options="sortOptions"
-          @update:model-value="(value) => changeSort(value)"
-        />
-      </VanDropdownMenu>
-      <div class="sort-icon" @click="toggleDisplayStyle">
-        <VanIcon
-          v-if="displayStyle == 'list'"
-          name="list-switch"
-        />
-        <VanIcon
-          v-else
-          name="list-switching"
-        />
-      </div>
-    </div>
+  <VanSticky :offset-top="46">
+    <VanSearch
+      :model-value="keyword"
+      placeholder="请输入搜索内容"
+      @focus="toSearch"
+    />
   </VanSticky>
-  <VanPullRefresh
-    v-model="refreshing"
-    @refresh="onRefresh"
+  <VanEmpty
+    v-if="!loading && finished && productList.length == 0"
+    image="search"
+    description="暂无商品"
   >
-    <VanList
-      v-model:loading="loading"
-      :finished="finished"
-      :immediate-check="false"
-      finished-text="没有更多了"
-      @load="onLoad"
+  </VanEmpty>
+  <template v-else>
+    <VanSticky :offset-top="54">
+      <div class="sort-bar">
+        <VanDropdownMenu style="flex: 1 1 0;">
+          <VanDropdownItem
+            :model-value="sort"
+            :options="sortOptions"
+            @update:model-value="(value) => changeSort(value)"
+          />
+        </VanDropdownMenu>
+        <div class="sort-icon" @click="toggleDisplayStyle">
+          <VanIcon
+            v-if="displayStyle == 'list'"
+            name="list-switch"
+          />
+          <VanIcon
+            v-else
+            name="list-switching"
+          />
+        </div>
+      </div>
+    </VanSticky>
+    <VanPullRefresh
+      v-model="refreshing"
+      @refresh="onRefresh"
     >
-      <template v-if="displayStyle === 'list'">
-        <VanCard
-          v-for="(product, index) in productList"
-          :key="index"
-          class="product-card"
-          :title="product.title"
-          :desc="product.sub_title"
-          :price="Number(product.price * 0.3).toFixed(2)"
-          :origin-price="Number(product.price).toFixed(2)"
-          :thumb="product.thumb"
-          :tag="product.stock == 0 ? '售罄' : ''"
-          @click="router.push(`/products/${product.id}`)"
-        >
-          <template #bottom>
-            <div style="color: var(--van-card-desc-color);">已售 {{ product.sales_count }}</div>
-          </template>
-          <template #num>
-            <VanButton
-              type="danger"
-              size="mini"
-              icon="cart-o"
-              round
-              @click.stop="addCart(product.id)"
-            />
-          </template>
-        </VanCard>
-      </template>
-      <template v-else>
-        <VanGrid
-          :border="false"
-          :column-num="2"
-          :gutter="10"
-          class="product-grid mt-10"
-        >
-          <VanGridItem
+      <VanList
+        v-model:loading="loading"
+        :finished="finished"
+        :immediate-check="false"
+        finished-text="没有更多了"
+        @load="onLoad"
+      >
+        <template v-if="displayStyle === 'list'">
+          <div
             v-for="(product, index) in productList"
             :key="index"
-            :to="`/products/${product.id}`"
+            class="product-list product-list-inset"
+            style="margin-top: 10px;"
           >
-            <VanImage
-              lazy-load
-              :src="product.thumb"
-              fit="cover"
-            />
-            <div style="width: 100%; padding: 10px; box-sizing: border-box;">
-              <div style="font-size: 16px;">
-                <VanTextEllipsis :content="product.title" />
+            <VanCard
+              class="product-list-item"
+              :title="product.title"
+              :desc="product.sub_title"
+              :price="Number(product.price * 0.3).toFixed(2)"
+              :origin-price="Number(product.price).toFixed(2)"
+              :thumb="product.thumb"
+              :tag="product.stock == 0 ? '售罄' : ''"
+              @click="router.push(`/products/${product.id}`)"
+            >
+              <template #bottom>
+                <div style="color: var(--van-card-desc-color);">已售 {{ product.sales_count }}</div>
+              </template>
+              <template #num>
+                <VanButton
+                  type="danger"
+                  size="mini"
+                  icon="cart-o"
+                  round
+                  plain
+                  @click.stop="addCart(product.id)"
+                />
+              </template>
+            </VanCard>
+          </div>
+        </template>
+        <template v-else>
+          <VanGrid
+            :border="false"
+            :column-num="2"
+            :gutter="10"
+            class="product-grid mt-10"
+          >
+            <VanGridItem
+              v-for="(product, index) in productList"
+              :key="index"
+              :to="`/products/${product.id}`"
+            >
+              <VanImage
+                lazy-load
+                :src="product.thumb"
+                fit="cover"
+              />
+              <div style="width: 100%; padding: 10px; box-sizing: border-box;">
+                <div style="font-size: 16px;">
+                  <VanTextEllipsis :content="product.title" />
+                </div>
+                <div>
+                  <span style="color: var(--van-card-price-color);">
+                    ¥ <span style="font-size: 16px;">{{ Number(product.price * 0.3).toFixed(2) }}</span>
+                  </span>
+                  <span class="van-card__origin-price">{{ Number(product.price).toFixed(2) }}</span>
+                </div>
+                <VanRow>
+                  <VanCol span="12" style="color: var(--van-card-desc-color); line-height: 24px;">已售 {{ product.sales_count }}</VanCol>
+                  <VanCol span="12" style="text-align: right;">
+                    <VanButton
+                      type="danger"
+                      size="mini"
+                      icon="cart-o"
+                      round
+                      plain
+                      @click.stop="addCart(product.id)"
+                    />
+                  </VanCol>
+                </VanRow>
               </div>
-              <div>
-                <span style="color: var(--van-card-price-color);">
-                  ¥ <span style="font-size: 16px;">{{ Number(product.price * 0.3).toFixed(2) }}</span>
-                </span>
-                <span class="van-card__origin-price">{{ Number(product.price).toFixed(2) }}</span>
-              </div>
-              <VanRow>
-                <VanCol span="12" style="color: var(--van-card-desc-color); line-height: 24px;">已售 {{ product.sales_count }}</VanCol>
-                <VanCol span="12" style="text-align: right;">
-                  <VanButton
-                    type="danger"
-                    size="mini"
-                    icon="cart-o"
-                    round
-                    @click.stop="addCart(product.id)"
-                  />
-                </VanCol>
-              </VanRow>
-            </div>
-          </VanGridItem>
-        </VanGrid>
-      </template>
-    </VanList>
-  </VanPullRefresh>
-</template>
-<ProductSpecPicker
-  v-model:show="showSpecPicker"
-  :product="currentRecord.product"
-  :default-item-ids="currentRecord.selectedItemIds"
-  :default-quantity="currentRecord.quantity"
-  button-text="加入购物车"
-  @select="selectProductSpec"
-/>
+            </VanGridItem>
+          </VanGrid>
+        </template>
+      </VanList>
+    </VanPullRefresh>
+  </template>
+  <ProductSpecPicker
+    v-model:show="showSpecPicker"
+    :product="currentRecord.product"
+    :default-item-ids="currentRecord.selectedItemIds"
+    :default-quantity="currentRecord.quantity"
+    button-text="加入购物车"
+    @select="selectProductSpec"
+  />
 </template>
 
 <style scoped>

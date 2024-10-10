@@ -25,49 +25,49 @@ function toSearch() {
 </script>
 
 <template>
-<VanSticky :offset-top="46">
-  <VanSearch
-    placeholder="请输入搜索内容"
-    @focus="toSearch"
-  />
-</VanSticky>
-<div class="pt-20">
-  <VanPullRefresh
-    v-model="refreshing"
-    @refresh="onRefresh"
-  >
-    <VanSpace
-      direction="vertical"
-      :size="20"
+  <VanSticky :offset-top="46">
+    <VanSearch
+      placeholder="请输入搜索内容"
+      @focus="toSearch"
+    />
+  </VanSticky>
+  <div class="pt-20">
+    <VanPullRefresh
+      v-model="refreshing"
+      @refresh="onRefresh"
     >
-      <div
-        v-for="(categoryGroup, index) in categoryGroupList"
-        :key="index"
+      <VanSpace
+        direction="vertical"
+        :size="20"
       >
-        <VanDivider class="divider">{{ categoryGroup.name }}</VanDivider>
-        <VanGrid
-          :border="false"
-          clickable
+        <div
+          v-for="(categoryGroup, index) in categoryGroupList"
+          :key="index"
         >
-          <VanGridItem
-            v-for="category in categoryGroup.childrens"
-            :to="`/products?categoryId=${category.id}`"
-            class="category-grid-item"
+          <VanDivider class="divider">{{ categoryGroup.name }}</VanDivider>
+          <VanGrid
+            :border="false"
+            clickable
           >
-            <VanImage
-              round
-              lazy-load
-              :src="category.thumb"
-              :width="60"
-              :height="60"
-            />
-            <VanTextEllipsis :content="category.name" />
-          </VanGridItem>
-        </VanGrid>
-      </div>
-    </VanSpace>
-  </VanPullRefresh>
-</div>
+            <VanGridItem
+              v-for="category in categoryGroup.childrens"
+              :to="`/products?categoryId=${category.id}`"
+              class="category-grid-item"
+            >
+              <VanImage
+                round
+                lazy-load
+                :src="category.thumb"
+                :width="60"
+                :height="60"
+              />
+              <VanTextEllipsis :content="category.name" />
+            </VanGridItem>
+          </VanGrid>
+        </div>
+      </VanSpace>
+    </VanPullRefresh>
+  </div>
 </template>
 
 <style scoped>

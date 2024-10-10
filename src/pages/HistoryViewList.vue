@@ -8,11 +8,11 @@ const deleting = ref(false);
 const deletingIds = ref([]);
 const route = useRoute();
 const store = useStore();
-const viewHistoryList = computed(() => {
-  return store.state.viewHistoryList;
+const historyViewList = computed(() => {
+  return store.state.historyView.historyViewList;
 });
 const isDeletingCheckAll = computed(() => {
-  return _.isEqual(_.sortBy(deletingIds.value), _.sortBy(_.map(viewHistoryList.value, 'id')));
+  return _.isEqual(_.sortBy(deletingIds.value), _.sortBy(_.map(historyViewList.value, 'id')));
 });
 
 watch(
@@ -35,31 +35,31 @@ function isSelectedDeleting(id) {
   return _.includes(deletingIds.value, id);
 }
 function toggleDeletingCheckAll() {
-  deletingIds.value = isDeletingCheckAll.value ? [] : _.map(viewHistoryList.value, 'id');
+  deletingIds.value = isDeletingCheckAll.value ? [] : _.map(historyViewList.value, 'id');
 }
 function toggleDeletingCheck(id, selected) {
   deletingIds.value = selected ? _.concat(deletingIds.value, id) : _.without(deletingIds.value, id);
 }
-function deleteSelectedViewHistroy() {
+function deleteSelectedHistoryView() {
   if (deletingIds.value.length === 0) {
     return;
   }
   _.forEach(deletingIds.value, id => {
-    store.dispatch('deleteViewHistroy', id);
+    store.dispatch('deleteHistoryView', id);
   });
 }
 </script>
 
 <template>
   <VanEmpty
-    v-if="viewHistoryList.length == 0"
+    v-if="historyViewList.length == 0"
     image="search"
     description="暂无浏览历史"
   >
   </VanEmpty>
   <div
     v-else
-    :style="deleting ? { paddingBottom: '50px' } : {}"
+    :style="deleting ? { paddingBottom: '60px' } : { paddingBottom: '10px' }"
   >
     <div style="text-align: right; margin: 10px;">
       <span
@@ -80,10 +80,10 @@ function deleteSelectedViewHistroy() {
       :column-num="3"
       :gutter="10"
       :clickable="!deleting"
-      class="product-grid mt-10"
+      class="product-grid"
     >
       <VanGridItem
-        v-for="(product, index) in viewHistoryList"
+        v-for="(product, index) in historyViewList"
         :key="index"
         :to="deleting ? '' : `/products/${product.id}`"
         style="position: relative;"
@@ -110,10 +110,7 @@ function deleteSelectedViewHistroy() {
         />
       </VanGridItem>
     </VanGrid>
-    <VanSubmitBar
-      v-if="deleting"
-      style="bottom: 50px;"
-    >
+    <VanSubmitBar v-if="deleting">
       <template #default>
         <VanCheckbox
           :model-value="isDeletingCheckAll"
@@ -127,7 +124,7 @@ function deleteSelectedViewHistroy() {
         <VanButton
           round
           style="width: var(--van-submit-bar-button-width); height: var(--van-submit-bar-button-height); font-weight: var(--van-font-bold);"
-          @click="deleteSelectedViewHistroy"
+          @click="deleteSelectedHistoryView"
         >
           删除
         </VanButton>
@@ -142,7 +139,7 @@ function deleteSelectedViewHistroy() {
   top: 10px;
   right: 10px;
 }
-.history-checkbox :deep(:not(.van-check__icon--checked) .van-icon) {
+.history-checkbox :deep(:not(.van-checkbox__icon--checked) .van-icon) {
   background-color: #fff;
 }
 </style>

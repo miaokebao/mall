@@ -7,21 +7,42 @@ body {
   font-size: 12px;
   background-color: var(--van-gray-1);
 }
-.product-card {
-  margin: 10px;
-  border-radius: 10px;
-  background-color: var(--van-card-background);
-  overflow: hidden;
-}
 .product-grid img {
   aspect-ratio: 1 / 1;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
+  border-top-left-radius: var(--van-cell-group-inset-radius);
+  border-top-right-radius: var(--van-cell-group-inset-radius);
 }
 .product-grid .van-grid-item__content {
   padding: 0;
-  border-radius: 10px;
+  border-radius: var(--van-cell-group-inset-radius);
   position: relative;
+}
+.product-list {
+  overflow: hidden;
+}
+.product-list-inset {
+  border-radius: var(--van-cell-group-inset-radius);
+  margin-left: 10px;
+  margin-right: 10px;
+}
+.product-list-item {
+  background-color: var(--van-card-background);
+  position: relative;
+  overflow: hidden;
+}
+.product-list-item:not(:last-child)::after {
+  position: absolute;
+  box-sizing: border-box;
+  content: " ";
+  pointer-events: none;
+  right: var(--van-padding-md);
+  bottom: 0;
+  left: var(--van-padding-md);
+  border-bottom: 1px solid var(--van-cell-border-color);
+  transform: scaleY(.5);
+}
+.pt-10 {
+  padding-top: 10px;
 }
 .pt-20 {
   padding-top: 20px;

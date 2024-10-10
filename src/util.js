@@ -1,3 +1,4 @@
+import axios from 'axios';
 import _ from 'lodash';
 
 export function convertProduct(rawProduct) {
@@ -32,3 +33,25 @@ export function getOptionByItemIds(options, itemIds) {
   return _.find(options, option => _.isEqual(_.sortBy(option.item_ids), _.sortBy(itemIds)));
 }
 
+export function formatOrderItems(orderItems) {
+  return _.map(orderItems, item => {
+    const record = _.cloneDeep(item);
+    record.option = _.find(record.product.options, option => option.id === record.option_id);
+    return record;
+  });
+}
+
+export async function getBufferFromImageUrls(urls) {
+  const promises = _.map(urls, url => axios.get(url, {
+    responseType: 'arraybuffer',
+  }));
+  const results = await Promise.all(promises);
+  return results.map(result => result.data);
+}
+
+export function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c === 'x'? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}

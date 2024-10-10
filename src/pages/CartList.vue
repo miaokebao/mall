@@ -5,7 +5,7 @@ import { useStore } from 'vuex';
 import { showSuccessToast } from 'vant';
 import _ from 'lodash';
 import ProductSpecPicker from '../components/ProductSpecPicker.vue';
-import { getOptionByItemIds } from '../util';
+import { formatOrderItems, getOptionByItemIds } from '../util';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,7 +22,7 @@ const editingCartRecord = ref({
   selectedItemIds: []
 });
 const cartList = computed(() => {
-  return store.getters.cartList;
+  return formatOrderItems(store.state.cart.cartList);
 });
 const isCheckAll = computed(() => {
   return _.every(cartList.value, item => item.selected);
@@ -146,34 +146,38 @@ function selectProductSpec(inputItemIds, inputQuantity, confirm) {
       </span>
     </div>
     <template v-if="deleting">
-      <div
-        v-for="(cartRecord, index) in cartList"
-        :key="index"
-        class="product-card"
-        style="display: flex;"
-      >
-        <VanCheckbox
-          :model-value="isSelectedDeleting(cartRecord.id)"
-          @update:model-value="(selected) => toggleDeletingCheck(cartRecord.id, selected)"
-          style="margin-left: 16px;"
-        />
-        <VanCard
-          :title="cartRecord.product.title"
-          :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
-          :origin-price="Number(cartRecord.option.price).toFixed(2)"
-          :thumb="cartRecord.product.thumb"
-          lazy-load
-          style="flex: 1 1 0; margin: 0;"
+      <div class="product-list product-list-inset">
+        <div
+          v-for="(cartRecord, index) in cartList"
+          :key="index"
+          class="product-list-item"
         >
-          <template #tags>
-            <VanTag
-              round
-              style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
+          <div style="display: flex;">
+            <VanCheckbox
+              :model-value="isSelectedDeleting(cartRecord.id)"
+              @update:model-value="(selected) => toggleDeletingCheck(cartRecord.id, selected)"
+              style="margin-left: 16px;"
+            />
+            <VanCard
+              :title="cartRecord.product.title"
+              :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
+              :origin-price="Number(cartRecord.option.price).toFixed(2)"
+              :thumb="cartRecord.product.thumb"
+              :num="orderItem.quantity"
+              lazy-load
+              style="flex: 1 1 0; margin: 0;"
             >
-              {{ cartRecord.option.title }}
-            </VanTag>
-          </template>
-        </VanCard>
+              <template #tags>
+                <VanTag
+                  round
+                  style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
+                >
+                  {{ cartRecord.option.title }}
+                </VanTag>
+              </template>
+            </VanCard>
+          </div>
+        </div>
       </div>
       <VanSubmitBar style="bottom: 50px;">
         <template #default>
@@ -197,57 +201,59 @@ function selectProductSpec(inputItemIds, inputQuantity, confirm) {
       </VanSubmitBar>
     </template>
     <template v-else>
-      <VanSwipeCell
-        v-for="(cartRecord, index) in cartList"
-        :key="index"
-        class="product-card"
-      >
-        <div style="display: flex; border-radius: 10px;">
-          <VanCheckbox
-            :model-value="cartRecord.selected"
-            @update:model-value="(selected) => updateSelected(cartRecord.id, selected)"
-            style="margin-left: 16px;"
-          />
-          <VanCard
-            :title="cartRecord.product.title"
-            :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
-            :origin-price="Number(cartRecord.option.price).toFixed(2)"
-            :thumb="cartRecord.product.thumb"
-            @click="router.push(`/products/${cartRecord.product.id}`)"
-            lazy-load
-            style="flex: 1 1 0; margin: 0;"
-          >
-            <template #tags>
-              <VanTag
-                round
-                style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
-                @click.stop="editProductSpec(cartRecord)"
-              >
-                {{ cartRecord.option.title }}
-                <VanIcon name="arrow-down" />
-              </VanTag>
-            </template>
-            <template #num>
-              <VanStepper
-                :model-value="cartRecord.quantity"
-                @change="(value) => updateQuantity(cartRecord.id, value)"
-                :max="cartRecord.option.stock"
-                button-size="20px"
-                @click.stop
-              />
-            </template>
-          </VanCard>
-        </div>
-        <template #right>
-          <VanButton
-            square
-            text="删除"
-            type="danger"
-            @click="deleteCartRecord(cartRecord.id)"
-            style="height: 100%;"
-          />
-        </template>
-      </VanSwipeCell>
+      <div class="product-list product-list-inset">
+        <VanSwipeCell
+          v-for="(cartRecord, index) in cartList"
+          :key="index"
+          class="product-list-item"
+        >
+          <div style="display: flex;">
+            <VanCheckbox
+              :model-value="cartRecord.selected"
+              @update:model-value="(selected) => updateSelected(cartRecord.id, selected)"
+              style="margin-left: 16px;"
+            />
+            <VanCard
+              :title="cartRecord.product.title"
+              :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
+              :origin-price="Number(cartRecord.option.price).toFixed(2)"
+              :thumb="cartRecord.product.thumb"
+              @click="router.push(`/products/${cartRecord.product.id}`)"
+              lazy-load
+              style="flex: 1 1 0; margin: 0;"
+            >
+              <template #tags>
+                <VanTag
+                  round
+                  style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
+                  @click.stop="editProductSpec(cartRecord)"
+                >
+                  {{ cartRecord.option.title }}
+                  <VanIcon name="arrow-down" />
+                </VanTag>
+              </template>
+              <template #num>
+                <VanStepper
+                  :model-value="cartRecord.quantity"
+                  @change="(value) => updateQuantity(cartRecord.id, value)"
+                  :max="cartRecord.option.stock"
+                  button-size="20px"
+                  @click.stop
+                />
+              </template>
+            </VanCard>
+          </div>
+          <template #right>
+            <VanButton
+              square
+              text="删除"
+              type="danger"
+              @click="deleteCartRecord(cartRecord.id)"
+              style="height: 100%;"
+            />
+          </template>
+        </VanSwipeCell>
+      </div>
       <VanSubmitBar
         :price="store.getters.totalSelectedPrice * 30"
         :button-text="`确认(${store.getters.totalSelectedQuantity})`"

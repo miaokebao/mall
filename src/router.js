@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import store from './store';
+import store from './store/index.js';
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -74,13 +74,35 @@ const router = createRouter({
       }
     },
     {
-      path: '/history',
-      name: 'history',
-      component: () => import('./pages/ViewHistoryList.vue'),
+      path: '/more',
+      name: 'more',
+      component: () => import('./pages/More.vue'),
       meta: {
-        pageTitle: '浏览历史',
+        pageTitle: '更多',
         pageBack: false,
         showTabBar: true,
+        showBackTop: false,
+      }
+    },
+    {
+      path: '/historyView',
+      name: 'historyView',
+      component: () => import('./pages/HistoryViewList.vue'),
+      meta: {
+        pageTitle: '浏览足迹',
+        pageBack: true,
+        showTabBar: false,
+        showBackTop: false,
+      }
+    },
+    {
+      path: '/historyOrder',
+      name: 'historyOrder',
+      component: () => import('./pages/HistoryOrderList.vue'),
+      meta: {
+        pageTitle: '订单记录',
+        pageBack: true,
+        showTabBar: false,
         showBackTop: false,
       }
     },
@@ -89,14 +111,31 @@ const router = createRouter({
       name: 'orderConfirm',
       component: () => import('./pages/OrderConfirm.vue'),
       meta: {
-        pageTitle: '确认订单',
+        pageTitle: '订单明细',
         pageBack: true,
         showTabBar: false,
         showBackTop: false,
       },
       beforeEnter() {
         if (!store.getters.totalSelectedQuantity) {
-          return { path: '/cart' };
+          return { path: '/cart', replace: true };
+        }
+      }
+    },
+    {
+      path: '/orderDetail',
+      name: 'orderDetail',
+      component: () => import('./pages/OrderDetail.vue'),
+      props: route => ({ params: route.query.params }),
+      meta: {
+        pageTitle: '订单明细',
+        pageBack: true,
+        showTabBar: false,
+        showBackTop: false,
+      },
+      beforeEnter(to) {
+        if (!to.query.params) {
+          return { path: '/', replace: true };
         }
       }
     },
