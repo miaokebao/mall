@@ -89,7 +89,7 @@ const router = createRouter({
       name: 'historyView',
       component: () => import('./pages/HistoryViewList.vue'),
       meta: {
-        pageTitle: '浏览足迹',
+        pageTitle: '浏览历史',
         pageBack: true,
         showTabBar: false,
         showBackTop: false,
@@ -100,7 +100,7 @@ const router = createRouter({
       name: 'historyOrder',
       component: () => import('./pages/HistoryOrderList.vue'),
       meta: {
-        pageTitle: '订单记录',
+        pageTitle: '订单历史',
         pageBack: true,
         showTabBar: false,
         showBackTop: false,

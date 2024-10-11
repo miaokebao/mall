@@ -6,6 +6,7 @@ import { showSuccessToast } from 'vant';
 import _ from 'lodash';
 import ProductSpecPicker from '../components/ProductSpecPicker.vue';
 import { formatOrderItems, getOptionByItemIds } from '../util';
+import OrderItem from '../components/OrderItem.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -146,39 +147,17 @@ function selectProductSpec(inputItemIds, inputQuantity, confirm) {
       </span>
     </div>
     <template v-if="deleting">
-      <div class="product-list product-list-inset">
-        <div
+      <VanCellGroup inset>
+        <OrderItem
           v-for="(cartRecord, index) in cartList"
           :key="index"
-          class="product-list-item"
-        >
-          <div style="display: flex;">
-            <VanCheckbox
-              :model-value="isSelectedDeleting(cartRecord.id)"
-              @update:model-value="(selected) => toggleDeletingCheck(cartRecord.id, selected)"
-              style="margin-left: 16px;"
-            />
-            <VanCard
-              :title="cartRecord.product.title"
-              :price="Number(cartRecord.option.price * 0.3).toFixed(2)"
-              :origin-price="Number(cartRecord.option.price).toFixed(2)"
-              :thumb="cartRecord.product.thumb"
-              :num="cartRecord.quantity"
-              lazy-load
-              style="flex: 1 1 0; margin: 0;"
-            >
-              <template #tags>
-                <VanTag
-                  round
-                  style="margin-top: 10px; padding: 3px 6px; background-color: var(--van-gray-2); color: #666;"
-                >
-                  {{ cartRecord.option.title }}
-                </VanTag>
-              </template>
-            </VanCard>
-          </div>
-        </div>
-      </div>
+          has-radio
+          :clickable="false"
+          :data="cartRecord"
+          :radio="isSelectedDeleting(cartRecord.id)"
+          @update:radio="(selected) => toggleDeletingCheck(cartRecord.id, selected)"
+        />
+      </VanCellGroup>
       <VanSubmitBar style="bottom: 50px;">
         <template #default>
           <VanCheckbox
@@ -201,7 +180,7 @@ function selectProductSpec(inputItemIds, inputQuantity, confirm) {
       </VanSubmitBar>
     </template>
     <template v-else>
-      <div class="product-list product-list-inset">
+      <VanCellGroup inset>
         <VanSwipeCell
           v-for="(cartRecord, index) in cartList"
           :key="index"
@@ -253,7 +232,7 @@ function selectProductSpec(inputItemIds, inputQuantity, confirm) {
             />
           </template>
         </VanSwipeCell>
-      </div>
+      </VanCellGroup>
       <VanSubmitBar
         :price="store.getters.totalSelectedPrice * 30"
         :button-text="`确认(${store.getters.totalSelectedQuantity})`"

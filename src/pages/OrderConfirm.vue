@@ -1,18 +1,25 @@
 <script setup>
 import { computed } from 'vue';
 import { useStore } from 'vuex';
-import OrderItems from '../components/OrderItems.vue';
+import OrderItem from '../components/OrderItem.vue';
 import OrderSubmitBar from '../components/OrderSubmitBar.vue';
+import { formatOrderItems } from '../util';
 
 const store = useStore();
-const selectedCartList = computed(() => {
-  return store.getters.selectedCartList;
+const orderItems = computed(() => {
+  return formatOrderItems(store.getters.selectedCartList);
 });
 </script>
 
 <template>
-  <div style="padding-bottom: 50px;">
-    <OrderItems :data="selectedCartList" />
-    <OrderSubmitBar :data="selectedCartList" />
+  <div class="pb-60 pt-10">
+    <VanCellGroup inset>
+      <OrderItem
+        v-for="(orderItem, index) in orderItems"
+        :key="index"
+        :data="orderItem"
+      />
+    </VanCellGroup>
+    <OrderSubmitBar :data="orderItems" />
   </div>
 </template>

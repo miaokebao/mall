@@ -1,10 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
-import { fetchProduct } from '../api';
-import { convertProduct } from '../util';
+import { getOrderItems } from '../util';
 import _ from 'lodash';
-import OrderItems from '../components/OrderItems.vue';
+import OrderItem from '../components/OrderItem.vue';
 
 const store = useStore();
 const rawHistoryOrderList = computed(() => {
@@ -25,16 +24,7 @@ function onRefresh() {
 async function onLoad() {
   if (index.value < rawHistoryOrderList.value.length) {
     const historyOrder = rawHistoryOrderList.value[index.value];
-    const productMap = await getProductMap(historyOrder.params.split(','));
-    historyOrderList.value.push(_.map(historyOrder.params.split(','), param => {
-      const [productId, optionId, quantity] = param.split('_');
-      const product = productMap[productId];
-      return {
-        product: product,
-        option_id: Number(optionId),
-        quantity: Number(quantity),
-      };
-    }));
+    historyOrderList.value.push(await getOrderItems(historyOrder.params.split(',')));
   }
   loading.value = false;
   if (index.value >= rawHistoryOrderList.value.length) {
@@ -42,16 +32,6 @@ async function onLoad() {
   } else {
     index.value++;
   }
-}
-async function getProductMap(params) {
-  const productIds = _.map(params, param => {
-    const [productId, ] = param.split('_');
-    return productId;
-  });
-  const promises = _.map(productIds, productId => fetchProduct(productId));
-  const results = await Promise.all(promises);
-  const products = results.map(result => convertProduct(result.data.data));
-  return _.fromPairs(_.map(products, item => [item.id, item]));
 }
 
 onMounted(() => {
@@ -70,18 +50,31 @@ onMounted(() => {
     @refresh="onRefresh"
   >
     <VanList
+      class="mt-10"
       v-model:loading="loading"
       :finished="finished"
       :immediate-check="false"
       finished-text="没有更多了"
       @load="onLoad"
     >
-      <div
-        v-for="(order, index) in historyOrderList"
-        :key="index"
+      <VanCellGroup
+        v-for="(orderItems, ItemsIndex) in historyOrderList"
+        :key="ItemsIndex"
+        inset
+        class="order-items"
       >
-        <OrderItems :data="order" />
-      </div>
+        <OrderItem
+          v-for="(orderItem, itemIndex) in orderItems"
+          :key="itemIndex"
+          :data="orderItem"
+        />
+      </VanCellGroup>
     </VanList>
   </VanPullRefresh>
 </template>
+
+<style scoped>
+.order-items + .order-items {
+  margin-top: 10px;
+}
+</style>

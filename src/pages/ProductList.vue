@@ -197,10 +197,10 @@ watch(
         @load="onLoad"
       >
         <template v-if="displayStyle === 'list'">
-          <div
+          <VanCellGroup
             v-for="(product, index) in productList"
             :key="index"
-            class="product-list product-list-inset"
+            inset
             style="margin-top: 10px;"
           >
             <VanCard
@@ -227,7 +227,7 @@ watch(
                 />
               </template>
             </VanCard>
-          </div>
+          </VanCellGroup>
         </template>
         <template v-else>
           <VanGrid

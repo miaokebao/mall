@@ -1,5 +1,6 @@
 import axios from 'axios';
 import _ from 'lodash';
+import { fetchProduct } from './api';
 
 export function convertProduct(rawProduct) {
   return {
@@ -54,4 +55,31 @@ export function generateUUID() {
     var r = Math.random() * 16 | 0, v = c === 'x'? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
+}
+
+export function isWeChatBrowser() {
+  return /MicroMessenger/i.test(navigator.userAgent);
+}
+
+export function getProductMap(productIds) {
+  const promises = _.map(productIds, productId => fetchProduct(productId));
+  return Promise.all(promises)
+    .then(results => {
+      const products = results.map(result => convertProduct(result.data.data));
+      return _.fromPairs(_.map(products, item => [item.id, item]));
+    });
+}
+
+export async function getOrderItems(params) {
+  const productIds = _.map(params, param => param.split('_')[0]);
+  const productMap = await getProductMap(productIds);
+  return formatOrderItems(_.map(params, param => {
+    const [productId, optionId, quantity] = param.split('_');
+    const product = productMap[productId];
+    return {
+      product: product,
+      option_id: Number(optionId),
+      quantity: Number(quantity),
+    };
+  }));
 }

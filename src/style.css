@@ -17,14 +17,6 @@ body {
   border-radius: var(--van-cell-group-inset-radius);
   position: relative;
 }
-.product-list {
-  overflow: hidden;
-}
-.product-list-inset {
-  border-radius: var(--van-cell-group-inset-radius);
-  margin-left: 10px;
-  margin-right: 10px;
-}
 .product-list-item {
   background-color: var(--van-card-background);
   position: relative;
@@ -49,4 +41,10 @@ body {
 }
 .mt-10 {
   margin-top: 10px;
+}
+.pb-50 {
+  padding-bottom: 50px;
+}
+.pb-60 {
+  padding-bottom: 60px;
 }

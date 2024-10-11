@@ -2,12 +2,12 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { showSuccessToast } from 'vant';
+import { showConfirmDialog, showSuccessToast } from 'vant';
 import ExcelJS from 'exceljs';
 import _ from 'lodash';
 import { saveAs } from 'file-saver';
 import copy from 'copy-to-clipboard';
-import { formatOrderItems, getBufferFromImageUrls } from '../util';
+import { formatOrderItems, getBufferFromImageUrls, isWeChatBrowser } from '../util';
 
 const router = useRouter();
 const state = useStore();
@@ -21,16 +21,21 @@ const orderItems = computed(() => {
   return formatOrderItems(props.data);
 });
 const totalPrice = computed(() => {
-  return _.sum(_.map(orderItems.value, item => {
-    const option = _.find(item.product.options, option => option.id === item.option_id);
-    return Number(item.quantity) * Number(option.price);
-  }));
+  return _.sum(_.map(orderItems.value, item => Number(item.quantity) * Number(item.option.price)));
 });
 const totalQuantity = computed(() => {
   return _.sum(_.map(orderItems.value, item => Number(item.quantity)));
 });
 
 async function exportOrder() {
+  if (isWeChatBrowser()) {
+    showConfirmDialog({ message: '暂不支持在微信内下载文件，请复制订单链接到其他浏览器访问下载', confirmButtonText: '复制' })
+      .then(() => {
+        copyLink();
+      })
+      .catch(() => {});
+    return;
+  }
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('订单', {views:[{state: 'frozen', xSplit: 1, ySplit:1}]});
   worksheet.columns = [
