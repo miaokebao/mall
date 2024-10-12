@@ -28,7 +28,7 @@ function toSearch() {
   <VanSticky :offset-top="46">
     <VanSearch
       placeholder="请输入搜索内容"
-      @focus="toSearch"
+      @click-input="toSearch"
     />
   </VanSticky>
   <div class="pt-20">

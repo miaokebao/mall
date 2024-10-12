@@ -53,7 +53,6 @@ function deleteSelectedHistoryView() {
 <template>
   <VanEmpty
     v-if="historyViewList.length == 0"
-    image="search"
     description="暂无浏览历史"
   >
   </VanEmpty>

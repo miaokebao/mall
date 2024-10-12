@@ -32,7 +32,7 @@ export default {
       state.cartList = _.filter(state.cartList, item => item.id != id);
     },
     deleteCartRecords(state, ids) {
-      state.cartList = _.filter(state.cartList, item => !ids.include(item.id));
+      state.cartList = _.filter(state.cartList, item => !ids.includes(item.id));
     },
     updateCartRecord(state, updateData) {
       if (!updateData.id) {

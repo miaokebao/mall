@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, useTemplateRef, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { showSuccessToast } from 'vant';
@@ -24,6 +24,7 @@ const props = defineProps({
 
 const store = useStore();
 const router = useRouter();
+const listRef = useTemplateRef('listRef');
 const refreshing = ref(false);
 const loading = ref(false);
 const finished = ref(false);
@@ -71,9 +72,9 @@ async function onLoad() {
 }
 function onRefresh() {
   finished.value = false;
-  loading.value = true;
+  loading.value = false;
   page.value = 1;
-  onLoad();
+  listRef.value.check();
 }
 function toSearch() {
   router.replace({
@@ -136,14 +137,15 @@ watch(
     keyword: props.keyword,
     sort: props.sort
   }),
-  (newValue, oldValue) => {
+  async (newValue, oldValue) => {
     refreshing.value = false;
-    loading.value = true;
+    loading.value = false;
     finished.value = false;
     page.value = 1;
     productList.value = [];
     showSpecPicker.value = false;
-    onLoad();
+    await nextTick();
+    listRef.value.check();
   },
   { immediate: true }
 );
@@ -154,7 +156,7 @@ watch(
     <VanSearch
       :model-value="keyword"
       placeholder="请输入搜索内容"
-      @focus="toSearch"
+      @click-input="toSearch"
     />
   </VanSticky>
   <VanEmpty
@@ -190,6 +192,7 @@ watch(
       @refresh="onRefresh"
     >
       <VanList
+        ref="listRef"
         v-model:loading="loading"
         :finished="finished"
         :immediate-check="false"

@@ -7,7 +7,7 @@ import ExcelJS from 'exceljs';
 import _ from 'lodash';
 import { saveAs } from 'file-saver';
 import copy from 'copy-to-clipboard';
-import { formatOrderItems, getBufferFromImageUrls, isMobileBrowser, isWeChatBrowser, uploadFile } from '../util';
+import { downloadFile, formatOrderItems, generateUUID, getBufferFromImageUrls, isMobileBrowser, isWeChatBrowser, uploadFile } from '../util';
 
 const router = useRouter();
 const store = useStore();
@@ -127,9 +127,10 @@ async function exportOrder() {
   const buffer = await workbook.xlsx.writeBuffer();
   const file = new File([buffer], 'order.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = await uploadFile(file);
-  saveAs(url, 'order.xlsx');
+  downloadFile(url, 'order.xlsx');
   closeToast();
   store.dispatch('addHistoryOrder', {
+    id: generateUUID(),
     params: getOrderParams().join(','),
     time: Date.now()
   });
@@ -159,7 +160,7 @@ function onShareSelect(option) {
 <template>
   <VanSubmitBar
     :price="totalPrice * 30"
-    :button-text="`导出清单(${totalQuantity})`"
+    :button-text="`导出(${totalQuantity})`"
     @submit="exportOrder"
   >
     <template #default>

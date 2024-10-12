@@ -1,11 +1,13 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, useTemplateRef, watch } from 'vue';
 import { useStore } from 'vuex';
 import { formatDatetime, getOrderItems } from '../util';
 import _ from 'lodash';
 import OrderItem from '../components/OrderItem.vue';
+import { showSuccessToast } from 'vant';
 
 const store = useStore();
+const listRef = useTemplateRef('listRef');
 const rawHistoryOrderList = computed(() => {
   return store.state.historyOrder.historyOrderList;
 });
@@ -16,17 +18,21 @@ const loading = ref(false);
 const finished = ref(false);
 
 function onRefresh() {
+  historyOrderList.value = [];
   finished.value = false;
-  loading.value = true;
+  loading.value = false;
   index.value = 0;
-  onLoad();
+  listRef.value.check();
 }
 async function onLoad() {
   if (index.value < rawHistoryOrderList.value.length) {
     const historyOrder = rawHistoryOrderList.value[index.value];
+    const orderItems = await getOrderItems(historyOrder.params.split(','));
     historyOrderList.value.push({
-      orderItems: await getOrderItems(historyOrder.params.split(',')),
-      orderTime: historyOrder.time
+      orderId: historyOrder.id,
+      orderItems: orderItems,
+      orderTime: historyOrder.time,
+      orderPice: _.sum(_.map(orderItems, item => Number(item.quantity) * Number(item.option.price))),
     });
   }
   loading.value = false;
@@ -36,9 +42,26 @@ async function onLoad() {
     index.value++;
   }
 }
+function deleteOrder(id) {
+  store.dispatch('deleteHistoryOrder', id);
+  onRefresh();
+}
+function addCart(id) {
+  const order = _.find(historyOrderList.value, order => order.orderId === id);
+  if (order) {
+    _.forEach(order.orderItems, item => {
+      store.dispatch('addCartRecord', {
+        product: item.product,
+        option_id: item.option_id,
+        quantity: item.quantity,
+      });
+    });
+    showSuccessToast('加购成功');
+  }
+}
 
 onMounted(() => {
-  onLoad();
+  listRef.value.check();
 });
 </script>
 
@@ -53,6 +76,7 @@ onMounted(() => {
     @refresh="onRefresh"
   >
     <VanList
+      ref="listRef"
       class="mt-10"
       v-model:loading="loading"
       :finished="finished"
@@ -72,6 +96,31 @@ onMounted(() => {
           :key="itemIndex"
           :data="orderItem"
         />
+        <VanCell>
+          <template #value>
+            <VanSpace>
+              <VanButton
+                icon="delete-o"
+                plain
+                round
+                size="small"
+                @click="deleteOrder(order.orderId)"
+              >
+                删除
+              </VanButton>
+              <VanButton
+                icon="cart-o"
+                plain
+                round
+                type="danger"
+                size="small"
+                @click="addCart(order.orderId)"
+              >
+                再次加购
+              </VanButton>
+            </VanSpace>
+          </template>
+        </VanCell>
       </VanCellGroup>
     </VanList>
   </VanPullRefresh>

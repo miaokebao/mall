@@ -98,7 +98,6 @@ export async function uploadFile(file) {
 export function downloadFile(url, filename) {
   const a = document.createElement('a');
   a.href = url;
-  a.target = '_blank';
   a.download = filename;
   a.style.display = 'none';
   document.body.appendChild(a);
