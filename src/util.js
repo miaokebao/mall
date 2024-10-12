@@ -61,6 +61,10 @@ export function isWeChatBrowser() {
   return /MicroMessenger/i.test(navigator.userAgent);
 }
 
+export function isMobileBrowser() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 export function getProductMap(productIds) {
   const promises = _.map(productIds, productId => fetchProduct(productId));
   return Promise.all(promises)
@@ -82,4 +86,28 @@ export async function getOrderItems(params) {
       quantity: Number(quantity),
     };
   }));
+}
+
+export async function uploadFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const upload = await axios.post('https://tmpfiles.org/api/v1/upload', formData);
+  return upload.data.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+}
+
+export function downloadFile(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+export function formatDatetime(timestamp) {
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+    + ` ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
 }

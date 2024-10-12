@@ -1,20 +1,24 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { showConfirmDialog, showSuccessToast } from 'vant';
+import { closeToast, showLoadingToast, showSuccessToast } from 'vant';
 import ExcelJS from 'exceljs';
 import _ from 'lodash';
 import { saveAs } from 'file-saver';
 import copy from 'copy-to-clipboard';
-import { formatOrderItems, getBufferFromImageUrls, isWeChatBrowser } from '../util';
+import { formatOrderItems, getBufferFromImageUrls, isMobileBrowser, isWeChatBrowser, uploadFile } from '../util';
 
 const router = useRouter();
-const state = useStore();
+const store = useStore();
 const props = defineProps({
   data: {
     type: Array,
     required: true,
+  },
+  fromCart: {
+    type: Boolean,
+    default: false,
   }
 });
 const orderItems = computed(() => {
@@ -26,16 +30,19 @@ const totalPrice = computed(() => {
 const totalQuantity = computed(() => {
   return _.sum(_.map(orderItems.value, item => Number(item.quantity)));
 });
+const showShare = ref(false);
+const shareOptions = [];
+if (!isWeChatBrowser() && isMobileBrowser()) {
+  shareOptions.push({ name: '微信', icon: 'wechat' });
+}
+shareOptions.push({ name: '复制链接', icon: 'link' });
 
 async function exportOrder() {
-  if (isWeChatBrowser()) {
-    showConfirmDialog({ message: '暂不支持在微信内下载文件，请复制订单链接到其他浏览器访问下载', confirmButtonText: '复制' })
-      .then(() => {
-        copyLink();
-      })
-      .catch(() => {});
-    return;
-  }
+  showLoadingToast({
+    message: '导出中...',
+    duration: 0,
+    forbidClick: true,
+  });
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('订单', {views:[{state: 'frozen', xSplit: 1, ySplit:1}]});
   worksheet.columns = [
@@ -118,13 +125,17 @@ async function exportOrder() {
     });
   });
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  saveAs(blob, '订单.xlsx');
-
-  state.dispatch('addHistoryOrder', {
+  const file = new File([buffer], 'order.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = await uploadFile(file);
+  saveAs(url, 'order.xlsx');
+  closeToast();
+  store.dispatch('addHistoryOrder', {
     params: getOrderParams().join(','),
     time: Date.now()
   });
+  // if (fromCart.value) {
+  //   store.dispatch('clearSelectedCartRecords');
+  // }
 }
 function getOrderParams() {
   return _.reduce(orderItems.value, (params, orderItem) => {
@@ -132,12 +143,16 @@ function getOrderParams() {
     return params;
   }, []);
 }
-function copyLink() {
+function onShareSelect(option) {
   const params = getOrderParams();
   const baseUrl = `${window.location.origin}/mall/`;
   const href = router.resolve({ path: '/orderDetail', query: { params: params.join(',') } }).href;
   copy(`${baseUrl}${href}`);
-  showSuccessToast('链接复制成功');
+  showSuccessToast('复制已链接');
+  if (option.name == '微信') {
+    window.location.href = 'weixin://';
+  }
+  showShare.value = false;
 }
 </script>
 
@@ -151,8 +166,14 @@ function copyLink() {
       <VanActionBarIcon
         icon="share-o"
         text="分享"
-        @click="copyLink"
+        @click="showShare = true"
       />
     </template>
   </VanSubmitBar>
+  <VanShareSheet
+    v-model:show="showShare"
+    title="立即分享给好友"
+    :options="shareOptions"
+    @select="onShareSelect"
+  />
 </template>

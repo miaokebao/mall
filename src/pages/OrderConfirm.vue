@@ -20,6 +20,6 @@ const orderItems = computed(() => {
         :data="orderItem"
       />
     </VanCellGroup>
-    <OrderSubmitBar :data="orderItems" />
+    <OrderSubmitBar :data="orderItems" from-cart />
   </div>
 </template>

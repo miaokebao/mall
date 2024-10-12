@@ -3,7 +3,7 @@ import { ref, watch, computed } from 'vue';
 import { useStore } from 'vuex';
 import { showSuccessToast } from 'vant';
 import ProductSpecPicker from '../components/ProductSpecPicker.vue';
-import { convertProduct, getOptionByItemIds } from '../util.js';
+import { convertProduct, getOptionByItemIds, isMobileBrowser, isWeChatBrowser } from '../util.js';
 import { fetchProduct } from '../api.js';
 import _ from 'lodash';
 import copy from 'copy-to-clipboard';
@@ -41,6 +41,12 @@ const showStock = computed(() => {
 const selectedOption = computed(() => {
   return getOptionByItemIds(product.value.options, selectedItemIds.value);
 });
+const showShare = ref(false);
+const shareOptions = [];
+if (!isWeChatBrowser() && isMobileBrowser()) {
+  shareOptions.push({ name: '微信', icon: 'wechat' });
+}
+shareOptions.push({ name: '复制链接', icon: 'link' });
 
 async function getProduct() {
   loading.value = true;
@@ -73,9 +79,13 @@ function selectProductSpec(inputItemIds, inputQuantity, confirm) {
     showSuccessToast('加购成功');
   }
 }
-function copyLink() {
+function onShareSelect(option) {
   copy(window.location.href);
-  showSuccessToast('链接复制成功');
+  showSuccessToast('复制已链接');
+  if (option.name == '微信') {
+    window.location.href = 'weixin://';
+  }
+  showShare.value = false;
 }
 
 watch(
@@ -187,7 +197,7 @@ watch(
     <VanActionBarIcon
       icon="share-o"
       text="分享"
-      @click="copyLink"
+      @click="showShare = true"
     />
     <VanActionBarButton
       type="danger"
@@ -204,6 +214,12 @@ watch(
     :default-quantity="quantity"
     button-text="加入购物车"
     @select="selectProductSpec"
+  />
+  <VanShareSheet
+    v-model:show="showShare"
+    title="立即分享给好友"
+    :options="shareOptions"
+    @select="onShareSelect"
   />
 </template>
 

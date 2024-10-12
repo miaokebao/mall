@@ -31,6 +31,9 @@ export default {
     deleteCartRecord(state, id) {
       state.cartList = _.filter(state.cartList, item => item.id != id);
     },
+    deleteCartRecords(state, ids) {
+      state.cartList = _.filter(state.cartList, item => !ids.include(item.id));
+    },
     updateCartRecord(state, updateData) {
       if (!updateData.id) {
         return;
@@ -45,6 +48,9 @@ export default {
           cartRecord[fieldKey] = updateData[fieldKey];
         }
       });
+    },
+    clearSelectedCartRecords(state) {
+      state.cartList = _.filter(state.cartList, item => !item.selected);
     }
   },
   actions: {
@@ -60,8 +66,16 @@ export default {
       commit('deleteCartRecord', id);
       localStorage.setItem('cartList', JSON.stringify(state.cartList));
     },
+    deleteCartRecords({ commit, state }, ids) {
+      commit('deleteCartRecords', ids);
+      localStorage.setItem('cartList', JSON.stringify(state.cartList));
+    },
     updateCartRecord({ commit, state }, updateData) {
       commit('updateCartRecord', updateData);
+      localStorage.setItem('cartList', JSON.stringify(state.cartList));
+    },
+    clearSelectedCartRecords({ commit, state }) {
+      commit('clearSelectedCartRecords');
       localStorage.setItem('cartList', JSON.stringify(state.cartList));
     }
   },

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
-import { getOrderItems } from '../util';
+import { formatDatetime, getOrderItems } from '../util';
 import _ from 'lodash';
 import OrderItem from '../components/OrderItem.vue';
 
@@ -24,7 +24,10 @@ function onRefresh() {
 async function onLoad() {
   if (index.value < rawHistoryOrderList.value.length) {
     const historyOrder = rawHistoryOrderList.value[index.value];
-    historyOrderList.value.push(await getOrderItems(historyOrder.params.split(',')));
+    historyOrderList.value.push({
+      orderItems: await getOrderItems(historyOrder.params.split(',')),
+      orderTime: historyOrder.time
+    });
   }
   loading.value = false;
   if (index.value >= rawHistoryOrderList.value.length) {
@@ -58,13 +61,14 @@ onMounted(() => {
       @load="onLoad"
     >
       <VanCellGroup
-        v-for="(orderItems, ItemsIndex) in historyOrderList"
+        v-for="(order, ItemsIndex) in historyOrderList"
         :key="ItemsIndex"
         inset
+        :title="formatDatetime(order.orderTime)"
         class="order-items"
       >
         <OrderItem
-          v-for="(orderItem, itemIndex) in orderItems"
+          v-for="(orderItem, itemIndex) in order.orderItems"
           :key="itemIndex"
           :data="orderItem"
         />

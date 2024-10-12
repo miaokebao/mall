@@ -60,9 +60,7 @@ function deleteSelectedCartRecord() {
   if (deletingIds.value.length === 0) {
     return;
   }
-  _.forEach(deletingIds.value, id => {
-    store.dispatch('deleteCartRecord', id);
-  });
+  store.dispatch('deleteCartRecords', deletingIds.value);
 }
 function deleteCartRecord(id) {
   store.dispatch('deleteCartRecord', id);

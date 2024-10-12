@@ -93,7 +93,7 @@ function changeSort(sortValue) {
     }
   });
 }
-async function addCart(productId) {
+async function shwoProductSpec(productId) {
   const response =  await fetchProduct(productId);
   showSpecPicker.value = true;
   currentRecord.value = {
@@ -223,7 +223,7 @@ watch(
                   icon="cart-o"
                   round
                   plain
-                  @click.stop="addCart(product.id)"
+                  @click.stop="shwoProductSpec(product.id)"
                 />
               </template>
             </VanCard>
@@ -265,7 +265,7 @@ watch(
                       icon="cart-o"
                       round
                       plain
-                      @click.stop="addCart(product.id)"
+                      @click.stop="shwoProductSpec(product.id)"
                     />
                   </VanCol>
                 </VanRow>
