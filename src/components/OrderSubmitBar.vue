@@ -134,9 +134,9 @@ async function exportOrder() {
     params: getOrderParams().join(','),
     time: Date.now()
   });
-  if (fromCart.value) {
-    store.dispatch('clearSelectedCartRecords');
-  }
+  // if (props.fromCart) {
+  //   store.dispatch('clearSelectedCartRecords');
+  // }
 }
 function getOrderParams() {
   return _.reduce(orderItems.value, (params, orderItem) => {
