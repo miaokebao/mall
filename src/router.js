@@ -111,7 +111,7 @@ const router = createRouter({
       name: 'orderConfirm',
       component: () => import('./pages/OrderConfirm.vue'),
       meta: {
-        pageTitle: '订单明细',
+        pageTitle: '订单确认',
         pageBack: true,
         showTabBar: false,
         showBackTop: false,
@@ -139,6 +139,23 @@ const router = createRouter({
         }
       }
     },
+    {
+      path: '/orderExport',
+      name: 'orderExport',
+      component: () => import('./pages/OrderExport.vue'),
+      props: route => ({ url: route.query.url }),
+      meta: {
+        pageTitle: '',
+        pageBack: false,
+        showTabBar: false,
+        showBackTop: false,
+      },
+      beforeEnter(to) {
+        if (!to.query.url) {
+          return { path: '/', replace: true };
+        }
+      }
+    }
   ]
 });
 

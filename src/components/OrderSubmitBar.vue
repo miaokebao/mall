@@ -127,16 +127,16 @@ async function exportOrder() {
   const buffer = await workbook.xlsx.writeBuffer();
   const file = new File([buffer], 'order.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = await uploadFile(file);
-  downloadFile(url, 'order.xlsx');
+  router.push({ path: '/orderExport', query: { url: url } });
   closeToast();
   store.dispatch('addHistoryOrder', {
     id: generateUUID(),
     params: getOrderParams().join(','),
     time: Date.now()
   });
-  // if (props.fromCart) {
-  //   store.dispatch('clearSelectedCartRecords');
-  // }
+  if (props.fromCart) {
+    store.dispatch('clearSelectedCartRecords');
+  }
 }
 function getOrderParams() {
   return _.reduce(orderItems.value, (params, orderItem) => {
@@ -149,7 +149,7 @@ function onShareSelect(option) {
   const baseUrl = `${window.location.origin}/mall/`;
   const href = router.resolve({ path: '/orderDetail', query: { params: params.join(',') } }).href;
   copy(`${baseUrl}${href}`);
-  showSuccessToast('复制已链接');
+  showSuccessToast('链接已复制');
   if (option.name == '微信') {
     window.location.href = 'weixin://';
   }

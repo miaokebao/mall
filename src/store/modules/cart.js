@@ -17,14 +17,15 @@ export default {
         return;
       }
       const cartRecord = state.cartList.find(item => item.option_id === addData.option_id);
+      const option = _.find(addData.product.options, option => option.id === addData.option_id);
+      const stock = option.stock;
       if (cartRecord) {
-        if (typeof addData.product !== 'undefined') {
-          cartRecord.product = addData.product;
-        }
         cartRecord.quantity += addData.quantity;
+        cartRecord.quantity = Math.min(cartRecord.quantity, stock);
       } else {
         addData.id = generateUUID();
         addData.selected = true;
+        addData.quantity = Math.min(addData.quantity, stock);
         state.cartList.push(addData);
       }
     },

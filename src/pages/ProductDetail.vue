@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import { useStore } from 'vuex';
-import { showSuccessToast } from 'vant';
+import { showImagePreview, showSuccessToast } from 'vant';
 import ProductSpecPicker from '../components/ProductSpecPicker.vue';
 import { convertProduct, getOptionByItemIds, isMobileBrowser, isWeChatBrowser } from '../util.js';
 import { fetchProduct } from '../api.js';
@@ -61,7 +61,7 @@ async function getProduct() {
   });
 }
 function previewImage(startPosition) {
-  vant.showImagePreview({
+  showImagePreview({
     images: product.value.thumbs,
     startPosition: startPosition,
     closeable: true
@@ -81,7 +81,7 @@ function selectProductSpec(inputItemIds, inputQuantity, confirm) {
 }
 function onShareSelect(option) {
   copy(window.location.href);
-  showSuccessToast('复制已链接');
+  showSuccessToast('链接已复制');
   if (option.name == '微信') {
     window.location.href = 'weixin://';
   }
