@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { fetchCategoryList } from '../api.js';
+import { showToast } from 'vant';
 
 const router = useRouter();
 
@@ -22,14 +23,22 @@ function onRefresh() {
 function toSearch() {
   router.push(`/search`);
 }
+function onSearch() {
+  showToast('请输入搜索内容');
+}
 </script>
 
 <template>
   <VanSticky :offset-top="46">
     <VanSearch
       placeholder="请输入搜索内容"
+      show-action
       @click-input="toSearch"
-    />
+    >
+      <template #action>
+        <div @click="onSearch">搜索</div>
+      </template>
+    </VanSearch>
   </VanSticky>
   <div class="pt-20">
     <VanPullRefresh

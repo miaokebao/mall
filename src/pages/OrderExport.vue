@@ -37,7 +37,7 @@ onMounted(() => {
     </div>
     <div class="msg-text-area">
       <h2 class="msg-title">导出成功</h2>
-      <p class="msg-desc">导出已经开始，若浏览器没有自动下载，可点此下方按钮复制链接进行下载</p>
+      <p class="msg-desc">导出已经开始，若浏览器没有自动下载，可点击下方按钮复制链接进行下载</p>
     </div>
     <div class="msg-opr-area">
       <VanButton

@@ -2,7 +2,7 @@
 import { ref, watch, computed, useTemplateRef, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { showSuccessToast } from 'vant';
+import { showSuccessToast, showToast } from 'vant';
 import ProductSpecPicker from '../components/ProductSpecPicker.vue';
 import { convertProduct, getOptionByItemIds } from '../util.js';
 import { fetchProduct, fetchProductList } from '../api.js';
@@ -84,6 +84,9 @@ function toSearch() {
     }
   });
 }
+function onSearch() {
+  showToast('请输入搜索内容');
+}
 function changeSort(sortValue) {
   router.replace({
     path: '/products',
@@ -155,9 +158,14 @@ watch(
   <VanSticky :offset-top="46">
     <VanSearch
       :model-value="keyword"
+      show-action
       placeholder="请输入搜索内容"
       @click-input="toSearch"
-    />
+    >
+      <template #action>
+        <div @click="onSearch">搜索</div>
+      </template>
+    </VanSearch>
   </VanSticky>
   <VanEmpty
     v-if="!loading && finished && productList.length == 0"

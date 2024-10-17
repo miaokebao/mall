@@ -6,7 +6,7 @@ const router = useRouter();
 const route = useRoute();
 const store = useStore();
 function backPage() {
-  if (router.options.history.state) {
+  if (router.options.history.state.back) {
     router.back();
   } else {
     router.push('/');

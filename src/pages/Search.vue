@@ -2,6 +2,7 @@
 import { ref, watch, useTemplateRef, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import _ from 'lodash';
+import { showToast } from 'vant';
 
 const props = defineProps({
   keyword: {
@@ -19,9 +20,16 @@ const historyKeywords = ref(_.isArray(rawHistoryKeywords) ? rawHistoryKeywords :
 const currentKeyword = ref('');
 const deleting = ref(false);
 
-function searchHistoryKeyword(value) {
+function onSearch(value) {
+  if (value === '') {
+    showToast('请输入搜索内容');
+    return;
+  }
   addHistoryKeyword(value);
   router.replace(`/products?keyword=${value}`);
+}
+function onClickSearch() {
+  onSearch(currentKeyword.value);
 }
 function addHistoryKeyword(historyKeyword) {
   if (historyKeyword === '') {
@@ -72,9 +80,14 @@ watch(
     <VanSearch
       v-model="currentKeyword"
       placeholder="请输入搜索内容"
+      show-action
       ref="search"
-      @search="searchHistoryKeyword"
-    />
+      @search="onSearch"
+    >
+      <template #action>
+        <div @click="onClickSearch">搜索</div>
+      </template>
+    </VanSearch>
   </VanSticky>
   <div style="height: calc(100vh - 100px); background-color: #fff;">
     <div
@@ -114,7 +127,7 @@ watch(
           :closeable="deleting"
           size="large"
           style="background-color: var(--van-gray-2); color: #666;"
-          @click="deleting ? deleteHistoryKeyword(historyKeyword) : searchHistoryKeyword(historyKeyword)"
+          @click="deleting ? deleteHistoryKeyword(historyKeyword) : onSearch(historyKeyword)"
           @close="deleteHistoryKeyword(historyKeyword)"
         >
           {{ historyKeyword }}
